@@ -1,90 +1,141 @@
 # latentspace
 
-*One evolutionary algorithm for any problem.* (Working name — rename freely.)
+*One evolutionary algorithm for any problem.*
 
-Evolve a universal **latent vector**; a single **co-evolving neural decoder** maps
-it to a phenotype of *any* shape. To solve a new problem you change two things —
-the fitness function and the output shape — and nothing else.
+A universal genetic algorithm never mutates the solution itself — because
+"add noise to the pixels" only exists when the solution is pixels. Instead,
+every individual carries a small **genome** plus its own **decoder
+network**, and evolution operates only on those (they're just tensors, so
+the same operators work for any problem). The decoder translates genome →
+solution. The only problem-specific things you supply are the **fitness
+function**, the **output shape**, and optionally the **decoder
+architecture** — the same things you'd have to supply anyway.
 
 ```python
-from latentspace import Evolver
+from latentspace import solve
 
-ev = Evolver(fitness_fn, output_shape=(H, W, 3), device="cuda")
-ev.solve(400)
-phenotype = ev.decode_best()
+def fitness(phenotypes):           # torch tensor (B, 32, 32), values in [0, 1]
+    return -((phenotypes - target) ** 2).flatten(1).mean(dim=1)
+
+result = solve(fitness, output_shape=(32, 32), budget=5_000)
+result.best_phenotype              # (32, 32) array — the best solution found
 ```
 
-## Why this is one algorithm
+**The evidence** (10 paired seeds, identical evaluation budgets; full
+campaign in [FINDINGS.md](FINDINGS.md)): on a hidden-image benchmark this
+beats a traditional GA with hand-matched mutation **10 runs to 0, 2.8×
+better**, given nothing but the fitness function. On a smooth-signal
+benchmark it's a statistical tie. Discrete problems (tours, bitstrings)
+remain unsolved by anything latent — see the open problems.
 
-This is a synthesis of three earlier projects:
+## How it works
 
-- **Finch** contributes the Keras-style **layer pipeline** and the idea that any
-  hyperparameter can be a schedule (a callable).
-- **GeneSpace** contributes the core bet: a **universal latent genotype** plus a
-  **learned decoder** that produces any output shape. Because every genotype is
-  just a fixed latent vector, almost all problem-specificity migrates into the
-  fitness function and the decoder — so the genetic operators collapse to
-  *"cross and mutate a vector."* That collapse is why it's simpler than Finch,
-  and why it's a single algorithm.
-- **Aulë** contributes the ontology: **everything is an `Individual`.** Solutions,
-  the decoder, layers and the environment share one root type. The load-bearing
-  payoff is that the **decoder is an `Individual` too**, so its two improvement
-  channels (gradient descent and evolution strategies) are just first-class
-  parts of the same system rather than a bolted-on branch.
-
-## The pipeline
+`solve` runs three phases against one evaluation budget:
 
 ```
-Populate           # top up the latent population
-Crossover          # n-point crossover on the latent vector
-Mutate             # gaussian (float) or bit-flip (binary), cache-invalidating
-DecodeAndEvaluate  # batched: latent -> phenotype -> fitness
-Sort
-RefineDecoder      # every N gens: improve the decoder, bump its version
-Cap
+EXPLORE   Population of 32 individuals, each = genome + private decoder
+          weights. Children get noisy copies of both. 32 independent
+          lineages make 32 independent kinds of mistake — on purpose.
+          Ends automatically when improvement stalls.
+
+DISTILL   Compress the run's best few hundred fitness-vetted solutions
+          into a small linear latent space (PCA in logit space).
+          Independent errors cancel; shared structure survives.
+
+EXPLOIT   CMA-ES over that latent space with the remaining budget —
+          recombining everything exploration learned.
 ```
 
-`Evolver` just compiles this. You can rebuild it by hand for full control.
+Each phase is a replaceable module (`latentspace.universal.explorer`,
+`.distill`, `.cma`). All three are load-bearing: benchmarked ablations show
+removing any one of them collapses the result.
 
-## The decoder co-evolves (two channels)
+## Decoder architectures
 
-- **Gradient (`RefineDecoder`, default `SELF_DISTILL`)** — trains the decoder so
-  the *worst* individuals' latents decode toward the *best* individuals'
-  phenotypes. Targets are the decoder's own outputs, so **no differentiable
-  objective is required**; this warps the output manifold toward high-fitness
-  regions over time. Also available: `GOOD_TO_BEST`, `EACH_TO_NEXT`.
-- **Evolution strategy (`decoder.evolve_step`)** — random weight perturbations
-  kept only if they raise population fitness, for when you want no
-  self-supervision at all.
+The decoder's *shape* may match the output modality — that's where problem
+structure legally lives. An untrained convolutional network already tends
+to produce smooth, locally-coherent outputs, which is why the image
+benchmark result holds; the architecture prior alone was worth 23%.
 
-## The one subtlety worth knowing
+```python
+solve(fitness, output_shape=(32, 32), architecture="conv2d")  # images
+solve(fitness, output_shape=(256,),   architecture="conv1d")  # signals
+solve(fitness, output_shape=(10,),    architecture="mlp")     # fallback
+solve(fitness, output_shape=(32, 32))                         # "auto": by shape
+```
 
-A co-evolving decoder is a **non-stationary landscape**: when the decoder
-changes, every previously computed fitness is measured under an old mapping.
-The decoder carries a `version` counter that bumps on every weight update; each
-individual records the version it was scored under; `DecodeAndEvaluate` only
-re-scores individuals whose version is stale. That single counter handles both
-mutated genes and a refreshed decoder, and it removes a whole class of
-stale-fitness bugs for free.
+Register your own (transformers, GRUs, procedural decoders — anything
+mapping a `(B, latent)` tensor to `(B, prod(output_shape))` logits):
 
-## Design choices (v1)
+```python
+from latentspace.universal import register_architecture
 
-- **Float latents** by default (`binary=True` available). Floats give the decoder
-  a smoother signal to train against.
-- **One decoder**, not a population. An MLP is a universal approximator, so one
-  decoder is expressive enough; a population would only add exploration diversity
-  of mappings, at the cost of a hard credit-assignment problem. Deferred.
+register_architecture("my-arch", lambda latent, shape: MyNet(latent, shape))
+solve(fitness, output_shape=(64, 64), architecture="my-arch")
+```
+
+## Tuning knobs (all optional)
+
+```python
+solve(
+    fitness, output_shape=(32, 32),
+    budget=5_000,             # exact number of fitness evaluations
+    latent=32,                # distilled search-space dimension
+    explore_fraction="auto",  # stall-based switch (benchmarked better than
+                              #   any fixed split); or a float like 0.6
+    distill_top=200,          # solutions compressed into the latent space
+    device="auto",            # mps / cuda / cpu
+    seed=0,                   # full determinism per seed
+)
+```
+
+## When you have related problems (pretraining)
+
+Given many instances of a problem *family*, a decoder pretrained on pooled
+solutions from cheap practice runs beats direct search 1.3–3.3× on fresh
+instances, improving lawfully with practice count (parity at ~16–32
+instances). The building blocks are exposed:
+
+```python
+from latentspace.universal import distill, cma_minimize
+
+space = distill(pooled_solutions, latent=32, output_shape=(256,))
+# freeze; then per new instance: CMA-ES over space.decode(z)
+```
+
+The two regimes — single-run and lifetime accumulation — are one system at
+two timescales; unifying them is open problem #4 in FINDINGS.md.
 
 ## Run it
 
 ```bash
-pip install -e .
-python examples/quickstart.py   # matches a target vector AND solves TSP, same 2 lines each
+pip install -e ".[dev]"
+python3 tests/test_universal.py          # CPU, seconds
+python -m benchmarks.round18_adaptive --budget 5000   # the headline result (MPS)
 ```
 
-## Not done yet
+The benchmark suite (`benchmarks/`) is the seventeen-round campaign that
+produced this design: every claim above has a numbered round, exact
+budgets, paired seeds, and raw per-seed JSON in `benchmark_results/`.
+Start with [FINDINGS.md](FINDINGS.md) for the narrative — including what
+was falsified, which is most of the original idea.
 
-This is the spine — correct and general, not tuned. Next: elitism at the mutation
-layer, proper benchmarks vs. representation-specific GAs, a refine-cadence /
-learning-rate sweep (the decoder LR is the main stability knob), and only *then*
-revisiting a population of competing decoders.
+## The research API (legacy)
+
+The original co-evolving `Evolver` — a latent GA whose single decoder
+trains during the run — remains available (`from latentspace import
+Evolver`) along with its trainer strategies and layer pipeline. The
+campaign found its central mechanism doesn't work: a decoder trained on
+solutions found by searching through itself cannot learn new structure
+(FINDINGS.md, "the self-referentiality principle"). It is kept as the
+research spine for studying exactly that failure mode, not as the
+recommended solver.
+
+## Open problems
+
+1. Variance on smooth-signal problems (the tie should be a win).
+2. More architectures: transformers, GRUs, permutation-aware decoders —
+   the last may finally crack discrete problems.
+3. Lifetime memory: bank vetted solutions across real solves, one shared
+   decoder, without the echo-chamber failure (FINDINGS.md, the
+   error-independence law).

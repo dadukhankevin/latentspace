@@ -23,6 +23,8 @@ class RandomSelection(Selection):
 class TournamentSelection(Selection):
     def __init__(self, size: int = 3):
         super().__init__()
+        if size < 1:
+            raise ValueError("size must be at least 1")
         self.size = size
 
     def __call__(self, individuals, k):
@@ -40,6 +42,12 @@ class RankSelection(Selection):
 
     def __init__(self, pressure: float = 1.8, scheme: str = "linear"):
         super().__init__()
+        if scheme not in {"linear", "exp"}:
+            raise ValueError("scheme must be 'linear' or 'exp'")
+        if scheme == "linear" and not 1 <= pressure <= 2:
+            raise ValueError("linear rank pressure must be in [1, 2]")
+        if scheme == "exp" and pressure < 0:
+            raise ValueError("exponential rank pressure cannot be negative")
         self.pressure = pressure
         self.scheme = scheme
 
@@ -64,6 +72,8 @@ class RankSelection(Selection):
 class TruncationSelection(Selection):
     def __init__(self, keep: float = 0.5):
         super().__init__()
+        if not 0 < keep <= 1:
+            raise ValueError("keep must be in (0, 1]")
         self.keep = keep
 
     def __call__(self, individuals, k):

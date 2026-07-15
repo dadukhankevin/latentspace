@@ -8,3 +8,6 @@ venv/
 .env
 .ipynb_checkpoints/
 .DS_Store
+
+# Glance memory
+.glance/
