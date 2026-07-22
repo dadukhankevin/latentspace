@@ -2660,6 +2660,29 @@ of the redesign after one day: mean MSE 0.0317 vs the legacy champion
 engine's 0.0259 on the same protocol — a 1.2x gap, from 2.5x at first
 light. Tests 23/23.
 
+**Round four — the fold optimizer (Daniel: "we are essentially applying
+gradients... Adam might help right?"): PARITY with the legacy engine.**
+The decoder previously had no optimizer — absorb was one full unscaled
+step of a donor's bending. Adam over fold events (state in latent
+space; the absorbed step is Adam's processed output; the donor stays
+exactly preserved because subtraction of ANY absorbed step from its
+latents is an identity on its phenotype), with the cadence confound
+controlled: raw absorption at a fixed every-32 cadence is much WORSE
+than the doubling schedule (0.0529 vs 0.0317 — frequent whole-bending
+absorption is 43 disruptions per run), but the SAME cadence through
+Adam is the best configuration the design has produced: 0.0256 mean
+(0.0235/0.0295/0.0239), better than the previous default on all 3
+seeds, lr 0.5 > lr 1.0 (0.0283). Mechanism: momentum bakes in the
+cross-species CONSENSUS direction; the second moment damps dimensions
+where donors disagree. Milestone: 0.0256 vs the legacy champion
+engine's 0.0259 — a statistical tie with the record-holding engine on
+its own benchmark, from 2.5x behind at the redesign's first pass, with
+one seed won, one tied, one lost. Round 50's law (Adam-style
+accumulation over evolution-measured directions) now operates at BOTH
+levels of the system. Shipped defaults: fold_optimizer="adam",
+fold_every=32, fold_lr=0.5. Untested: cadence and lr response curves
+beyond these points, and the fold-selection function. Tests 23/23.
+
 **Scale probe (same day): 1,024 problems / 160k evaluations (156 per
 problem) — the cold-start default fails at extreme problem counts, and
 the hot-start rule turns out to be per-family, not per-harness.** Library

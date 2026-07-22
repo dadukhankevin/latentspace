@@ -220,7 +220,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           gene_mutation=None, latent_mutation=None,
           speciation=None,
           fold_selection=largest_niche_champion_fold_selection,
-          fold="doubling", win_target=0.2, dial_step=1.15,
+          fold="on", fold_every=32, fold_optimizer="adam",
+          fold_lr=0.5, win_target=0.2, dial_step=1.15,
           founding="per_function", seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.
 
@@ -231,11 +232,20 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         tracked and reported for honest cross-method comparison.
     genes / latents: sizes of the two spaces. Genes are the decoder's
         input; latents bend the shared decoder per individual.
-    fold: "doubling" applies a proven individual's latents directly into
-        the shared decoder at exponentially spaced epochs (exact
-        arithmetic, zero evaluations for the application itself; the whole
-        population is honestly re-scored afterwards because the network
-        everyone decodes through has changed); "off" disables.
+    fold: "on" treats proven individuals' latents as measured update
+        directions for the shared decoder (Daniel's framing: evolution is
+        computing gradients). Default: every `fold_every` epochs the
+        selected donor's latents feed an Adam accumulator and the
+        processed step is absorbed into the decoder by exact arithmetic —
+        momentum keeps the cross-species consensus direction, the second
+        moment damps dimensions donors disagree on. Measured (3 paired
+        seeds): Adam flips frequent folding from harmful (raw every-32:
+        0.053) to the best configuration (0.026, better than the raw
+        doubling schedule on every seed, tying the legacy champion
+        engine). The donor's phenotype is preserved exactly for any step
+        size; everyone else shifts and is honestly re-scored.
+        fold_optimizer="raw" absorbs whole bendings; "off" disables
+        folding; fold_every=None restores the doubling schedule.
     The step dials for the two mutation spaces are global (dense feedback
     every epoch), start at 1.0, and self-tune by success rate with ties
     counted as successes. All other operators are the module-level defaults
@@ -313,6 +323,9 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
 
     gene_dial, latent_dial = 1.0, 1.0
     next_fold = 32
+    adam_m = np.zeros(latents, dtype=np.float64)
+    adam_v = np.zeros(latents, dtype=np.float64)
+    adam_t = 0
     history: list[dict] = []
 
     for epoch in range(int(epochs)):
@@ -392,16 +405,37 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                 pop_score[moved] = score(pop_genes[moved],
                                          pop_latents[moved], pop_fn[moved])
 
-        # --- fold: one proven individual's latents are applied DIRECTLY
-        # into the shared decoder (exact arithmetic, no training). The
-        # donor's latents become zero (its own phenotype is preserved
-        # bit-for-bit); everyone else feels the shift, so the whole
-        # population is honestly re-scored.
-        if fold == "doubling" and epoch + 1 >= next_fold:
-            next_fold *= 2
+        # --- fold: a proven individual's latents are treated as a measured
+        # update direction for the shared decoder (Daniel: "we are
+        # essentially applying gradients"). fold_optimizer="raw" absorbs
+        # the donor's whole bending; "adam" feeds each event into an
+        # Adam-style accumulator (momentum + per-dimension normalization)
+        # and absorbs the processed step. Either way the absorbed step is
+        # subtracted from the donor's latents, which preserves the donor's
+        # phenotype EXACTLY for any step size (the bending is linear in the
+        # latents); everyone else feels the shift, so the population is
+        # honestly re-scored.
+        if fold_every is not None:
+            fold_due = fold != "off" and (epoch + 1) % int(fold_every) == 0
+        else:
+            fold_due = fold == "doubling" and epoch + 1 >= next_fold
+            if fold_due:
+                next_fold *= 2
+        if fold_due:
             donor = fold_selection(fitness_shares(pop_score, pop_fn), pop_fn)
-            decoder.absorb(pop_latents[donor])
-            pop_latents[donor] = 0.0
+            g = pop_latents[donor].astype(np.float64)
+            if fold_optimizer == "adam":
+                adam_t += 1
+                adam_m = 0.9 * adam_m + 0.1 * g
+                adam_v = 0.999 * adam_v + 0.001 * g * g
+                m_hat = adam_m / (1 - 0.9 ** adam_t)
+                v_hat = adam_v / (1 - 0.999 ** adam_t)
+                step = (fold_lr * m_hat
+                        / (np.sqrt(v_hat) + 1e-8)).astype(np.float32)
+            else:
+                step = pop_latents[donor].copy()
+            decoder.absorb(step)
+            pop_latents[donor] -= step
             pop_score = score(pop_genes, pop_latents, pop_fn)
 
         history.append({
