@@ -2704,7 +2704,28 @@ perturbation of something all 32 co-adapted individuals depend on almost
 never survives a population-wide vote — the chimera law again, one
 level deeper. Designed refinements, untested: one-direction-at-a-time
 proposals, share-weighted acceptance, trials timed right after folds.
-Default stays frozen; the arm ships as directions="evolve". Scoreboard tonight: parity on many
+Default stays frozen; the arm ships as directions="evolve".
+
+**Round six — Daniel's counter-design: randomize the vocabulary PER
+INDIVIDUAL (directions="individual"), no global directions at all. The
+frozen ceiling BREAKS; the record stays distant.** Each individual
+carries an integer seed; its low-rank basis is a frozen random function
+of that seed (nothing per-individual is evolved weight — the invariant
+holds); (basis, latents) inherit from one parent as a unit;
+`fresh_basis_rate` of children are born with a new basis and zero
+latents; the fold absorbs donors' bendings from ANY basis into the one
+backbone. Apple, matched evaluations: 0.011152 vs frozen-shared
+0.012218 at 153k (~9% better), still descending at 306k (0.010670)
+where frozen was flat from 130k. Fresh-rate response is an inverted U
+(5%: 0.0164, 10%: 0.0122@76k, 20%: 0.0142) — the rare-injection law
+governing vocabularies now. Fresh-every-child (Daniel's literal
+strongest form) is decisively falsified: 0.0978, 8x worse — zeroing
+latents each birth destroys inheritance, and 4.6x slower (every child
+its own decode group). Honest slope: doubling budget 153k->306k gained
+4% — this escapes the random-span ceiling but does not close the 6x gap
+to the 0.00178 record; the rank-32-vs-free-weights bottleneck remains
+dominant. Ships as directions="individual" (not default pending the
+16-image multi-function check). Runs: scratchpad apple probes, seed 3. Scoreboard tonight: parity on many
 problems at a tenth the machinery; the old champion holds single-fitness
 by a wide, explained margin. Run: benchmarks/demo_apple_live.py, seed 3.
 

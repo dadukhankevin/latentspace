@@ -367,6 +367,45 @@ class ConditionalLoRAConv:
                     break
 
 
+def attach_seeded_directions(decoder):
+    """Per-individual direction bases (Daniel, 2026-07-22): each individual
+    carries an integer seed; its low-rank vocabulary is a frozen random
+    function of that seed — nothing per-individual is evolved weight. The
+    decoder gains a seed-grouped decode: for each distinct seed in a batch,
+    the corresponding random directions are installed and that sub-batch is
+    decoded, so the shared backbone stays the single source of accumulated
+    knowledge while every lineage searches its own random subspace."""
+    dim = len(decoder.direction_vector())
+    cache: dict[int, np.ndarray] = {}
+
+    def directions_for(seed: int) -> np.ndarray:
+        key = int(seed)
+        if key not in cache:
+            cache[key] = (np.random.default_rng(key)
+                          .standard_normal(dim) * 0.02).astype(np.float32)
+        return cache[key]
+
+    def decode_seeded(z: np.ndarray, coeff: np.ndarray,
+                      seeds: np.ndarray) -> torch.Tensor:
+        outputs = [None] * len(z)
+        for seed in np.unique(seeds):
+            picks = np.flatnonzero(seeds == seed)
+            decoder.set_direction_vector(directions_for(int(seed)))
+            part = decoder.decode(z[picks], coeff[picks])
+            for j, i in enumerate(picks):
+                outputs[int(i)] = part[j]
+        return torch.stack(outputs)
+
+    def absorb_seeded(coeff: np.ndarray, seed: int) -> None:
+        decoder.set_direction_vector(directions_for(int(seed)))
+        decoder.absorb(coeff)
+
+    decoder.directions_for = directions_for
+    decoder.decode_seeded = decode_seeded
+    decoder.absorb_seeded = absorb_seeded
+    return decoder
+
+
 def build_conditional_decoder(architecture, latent, output_shape,
                               coefficient_dim, device):
     """Pick the proven conv conditional-LoRA decoder for image-shaped outputs

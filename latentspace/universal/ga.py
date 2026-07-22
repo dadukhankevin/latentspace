@@ -222,7 +222,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           fold_selection=largest_niche_champion_fold_selection,
           fold="on", fold_every=32, fold_optimizer="adam",
           fold_lr=0.5, directions="frozen", direction_every=16,
-          direction_sigma=0.1, win_target=0.2, dial_step=1.15,
+          direction_sigma=0.1, fresh_basis_rate=0.1,
+          win_target=0.2, dial_step=1.15,
           founding="per_function", progress=None, progress_every=None,
           seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.
@@ -274,6 +275,9 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     torch.manual_seed(int(rng.integers(0, 2 ** 31)))
     decoder = build_conditional_decoder(
         architecture, genes, output_shape, latents, device)
+    if directions == "individual":
+        from .conditional import attach_seeded_directions
+        attach_seeded_directions(decoder)
 
     selection = selection or make_species_selection()
     gene_mutation = gene_mutation or make_gaussian_mutation()
@@ -293,11 +297,13 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     fn_evals = np.zeros(n_fns, dtype=np.int64)
     spent = 0
 
-    def score(genes_arr, latents_arr, fn_of) -> np.ndarray:
+    def score(genes_arr, latents_arr, fn_of, seeds=None) -> np.ndarray:
         """Decode once, score each phenotype on its own function, update
         the best-ever records, count evaluations."""
         nonlocal spent
-        phenos = decoder.decode(genes_arr, latents_arr)
+        phenos = (decoder.decode_seeded(genes_arr, latents_arr, seeds)
+                  if seeds is not None
+                  else decoder.decode(genes_arr, latents_arr))
         values = np.empty(len(fn_of), dtype=np.float64)
         for f in np.unique(fn_of):
             picks = np.flatnonzero(fn_of == f)
@@ -328,10 +334,15 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         pop_latents = rng.standard_normal((n0, latents)).astype(np.float32)
         pop_fn = np.repeat(np.arange(n_fns), 2)
     else:
+        n0 = 2
         pop_genes = rng.standard_normal((2, genes)).astype(np.float32)
         pop_latents = rng.standard_normal((2, latents)).astype(np.float32)
         pop_fn = np.zeros(2, dtype=np.int64)
-    pop_score = score(pop_genes, pop_latents, pop_fn)
+    seeded = directions == "individual"
+    pop_basis = (rng.integers(0, 2 ** 31, n0) if seeded
+                 else np.zeros(n0, dtype=np.int64))
+    pop_score = score(pop_genes, pop_latents, pop_fn,
+                      pop_basis if seeded else None)
 
     gene_dial, latent_dial = 1.0, 1.0
     next_fold = 32
@@ -354,8 +365,24 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         # --- reproduction
         a, b = selection(weights, pop_fn, rng, children)
         child_genes = gene_crossover(pop_genes[a], pop_genes[b], rng)
-        child_latents = latent_inheritance(pop_latents[a], pop_latents[b],
-                                           rng)
+        if seeded or latent_inheritance is coin_flip_latent_inheritance:
+            # (basis, latents) travel as one unit — the latents only mean
+            # anything relative to their basis, so seeded mode owns this
+            # choice; custom operators apply in the shared-vocabulary modes.
+            pick_b = rng.random(children) < 0.5
+            child_latents = np.where(pick_b[:, None], pop_latents[b],
+                                     pop_latents[a]).astype(np.float32)
+            child_basis = np.where(pick_b, pop_basis[b], pop_basis[a])
+        else:
+            child_latents = latent_inheritance(pop_latents[a],
+                                               pop_latents[b], rng)
+            child_basis = pop_basis[a].copy()
+        if seeded and fresh_basis_rate > 0:
+            fresh = rng.random(children) < fresh_basis_rate
+            n_fresh = int(fresh.sum())
+            if n_fresh:
+                child_basis[fresh] = rng.integers(0, 2 ** 31, n_fresh)
+                child_latents[fresh] = 0.0
 
         # --- mutation: the two spaces are perturbed by different operators
         # with independent self-tuning dials; each child mutates exactly one
@@ -378,13 +405,16 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         child_score = np.empty(children, dtype=np.float64)
         same = np.flatnonzero(~mixed)
         if len(same):
-            child_score[same] = score(child_genes[same], child_latents[same],
-                                      child_fn[same])
+            child_score[same] = score(
+                child_genes[same], child_latents[same], child_fn[same],
+                child_basis[same] if seeded else None)
         for i in np.flatnonzero(mixed):
             s_a = score(child_genes[i:i + 1], child_latents[i:i + 1],
-                        fa[i:i + 1])[0]
+                        fa[i:i + 1],
+                        child_basis[i:i + 1] if seeded else None)[0]
             s_b = score(child_genes[i:i + 1], child_latents[i:i + 1],
-                        fb[i:i + 1])[0]
+                        fb[i:i + 1],
+                        child_basis[i:i + 1] if seeded else None)[0]
             take_a = (s_a - pop_score[a[i]]) >= (s_b - pop_score[b[i]])
             child_fn[i] = fa[i] if take_a else fb[i]
             child_score[i] = s_a if take_a else s_b
@@ -409,10 +439,12 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         # lowest shares are removed; a function may go extinct.
         all_genes = np.concatenate([pop_genes, child_genes])
         all_latents = np.concatenate([pop_latents, child_latents])
+        all_basis = np.concatenate([pop_basis, child_basis])
         all_fn = np.concatenate([pop_fn, child_fn])
         all_score = np.concatenate([pop_score, child_score])
         keep = np.argsort(-fitness_shares(all_score, all_fn))[:population_cap]
         pop_genes, pop_latents = all_genes[keep], all_latents[keep]
+        pop_basis = all_basis[keep]
         pop_fn, pop_score = all_fn[keep], all_score[keep]
 
         # --- speciation: individuals drift onto other functions over time;
@@ -422,8 +454,9 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             moved = np.flatnonzero(new_fn != pop_fn)
             if len(moved):
                 pop_fn = new_fn
-                pop_score[moved] = score(pop_genes[moved],
-                                         pop_latents[moved], pop_fn[moved])
+                pop_score[moved] = score(
+                    pop_genes[moved], pop_latents[moved], pop_fn[moved],
+                    pop_basis[moved] if seeded else None)
 
         # --- fold: a proven individual's latents are treated as a measured
         # update direction for the shared decoder (Daniel: "we are
@@ -454,9 +487,13 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                         / (np.sqrt(v_hat) + 1e-8)).astype(np.float32)
             else:
                 step = pop_latents[donor].copy()
-            decoder.absorb(step)
+            if seeded:
+                decoder.absorb_seeded(step, int(pop_basis[donor]))
+            else:
+                decoder.absorb(step)
             pop_latents[donor] -= step
-            pop_score = score(pop_genes, pop_latents, pop_fn)
+            pop_score = score(pop_genes, pop_latents, pop_fn,
+                              pop_basis if seeded else None)
 
         # --- direction evolution: trial a perturbation of the shared
         # vocabulary itself. Accept if the living population, re-scored
