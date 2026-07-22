@@ -2891,3 +2891,27 @@ crossover question. Designed final test before closing the linkage thread:
 sparse-patch modifier + 16 images (diversity and power), then judge
 token-vs-plain. If BPE ties there too, the linkage idea is closed in this
 architecture — a real multi-falsification result, not a gap.
+
+**Round nine continued — transformer hybrid and grid-less probes: both
+negative, and the failure mode is diagnostic.** (a) Transformer -> FROZEN
+conv back-end (the "feed a CNN" idea, frozen so folding stays simple):
+FAILED, 0.4% vs the pure transformer's 11.3% on the same 4 images. A
+random frozen conv upsampler washes feature maps toward low-variance
+mush, so a LoRA-gated transformer feeding it gets almost no signal — the
+deep-image-prior benefit needs the conv REACHABLE (foldable / patched),
+not frozen. (b) Pure transformer on grid-less 1-D targets chosen to favor
+attention (long-range exact repeats, palindrome/mirror) vs a smooth-curve
+control: the OPPOSITE of the hypothesis — repeats 6.6%, palindrome 7.7%,
+smooth control 14.7%. Attention's global reach bought nothing; the
+transformer did best on the intrinsically EASIEST target, not the
+structure-matched ones. Diagnosis: the bottleneck is CAPACITY /
+REACHABILITY, not inductive-bias mismatch (bias mismatch would help the
+structured targets relatively, not the easy one). Every run in this thread
+carried the LoRA ceiling — the exact thing sparse patches shattered on the
+apple. Full thread scorecard: transformer weak on images, frozen-conv
+hybrid failed, attention-favoring probe falsified, BPE crossover ties
+plain (3rd time). One principled rescue untested: a SPARSE-PATCHED
+transformer (the ceiling-breaking modifier). If that is still weak, the
+tokenized-genome + transformer direction is cleanly closed; if it jumps,
+the weakness was the modifier all along. Runs: experimental file, 4 images
+/ grid-less sequences, single seed, 400 epochs (small).

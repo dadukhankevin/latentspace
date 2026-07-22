@@ -200,14 +200,19 @@ class TransformerImageDecoder:
                  d_model=48, heads=3, layers=2, rank=32):
         self.device = device
         self.out_shape = out_shape
-        h, w, c = out_shape
+        # channels = last dim only for 3-D image shapes; otherwise 1 output
+        # per position, so the same decoder handles sequences and grids.
+        c = out_shape[-1] if len(out_shape) == 3 else 1
+        self.n_queries = int(np.prod(out_shape)) // c
+        self.channels = c
         self.rank = rank
         net = nn.Module()
         net.embed = nn.Embedding(vocab + 1, d_model)       # +1 pad row
         net.pos = nn.Parameter(torch.randn(base_len, d_model) * 0.02)
         net.blocks = nn.ModuleList(
             [Block(d_model, heads, rank) for _ in range(layers)])
-        net.queries = nn.Parameter(torch.randn(h * w, d_model) * 0.02)
+        net.queries = nn.Parameter(
+            torch.randn(self.n_queries, d_model) * 0.02)
         net.cross = Attention(d_model, heads, rank)
         net.qnorm = nn.LayerNorm(d_model)
         net.head = LoRALinear(d_model, c, rank)
@@ -225,7 +230,6 @@ class TransformerImageDecoder:
         ids = torch.as_tensor(token_ids, device=self.device)
         cf = torch.as_tensor(coeff.astype(np.float32), device=self.device)
         kp = torch.as_tensor(pad_mask, device=self.device)
-        h, w, c = self.out_shape
         self._set_coeff(cf)
         with torch.no_grad():
             x = self.net.embed(ids) + self.net.pos[None]
@@ -233,9 +237,9 @@ class TransformerImageDecoder:
                 x = blk(x, kp)
             q = self.net.qnorm(self.net.queries)[None].expand(len(ids), -1, -1)
             painted = self.net.cross(q, x, kp)
-            out = torch.sigmoid(self.net.head(painted))    # (B, h*w, c)
+            out = torch.sigmoid(self.net.head(painted))    # (B, n_queries, c)
         self._set_coeff(None)
-        return out.reshape(len(ids), h * w * c)
+        return out.reshape(len(ids), self.n_queries * self.channels)
 
     def absorb(self, coeff: np.ndarray) -> None:
         cf = torch.as_tensor(coeff.astype(np.float32), device=self.device)
@@ -245,6 +249,58 @@ class TransformerImageDecoder:
 
 # ------------------------------------------------------------ the GA
 
+class TransformerConvDecoder(TransformerImageDecoder):
+    """Transformer front (global attention over the tokenized genome, LoRA-
+    gated, foldable) -> a small feature map -> a FROZEN random conv upsampler
+    that imposes the spatial prior for free (deep-image-prior: the conv
+    STRUCTURE biases toward natural images even untrained). The transformer
+    only has to learn to feed the conv the right base feature map."""
+
+    def __init__(self, vocab, base_len, out_shape, device,
+                 d_model=48, heads=3, layers=2, rank=32, ch=16):
+        super().__init__(vocab, base_len, out_shape, device,
+                         d_model, heads, layers, rank)
+        h, w, c = out_shape
+        base = h
+        doublings = 0
+        while base % 2 == 0 and base > 8:
+            base //= 2
+            doublings += 1
+        self.base = base
+        # replace the P=h*w pixel queries with base*base feature queries
+        self.net.queries = nn.Parameter(
+            torch.randn(base * base, d_model, device=device) * 0.02)
+        self.net.proj = LoRALinear(d_model, ch, rank).to(device)
+        convs: list[nn.Module] = []
+        for _ in range(doublings):
+            convs += [nn.Upsample(scale_factor=2, mode="nearest"),
+                      nn.Conv2d(ch, ch, 3, padding=1), nn.LeakyReLU()]
+        convs += [nn.Conv2d(ch, c, 3, padding=1)]
+        self.net.convs = nn.Sequential(*convs).to(device)
+        for p in self.net.convs.parameters():           # frozen spatial prior
+            p.requires_grad_(False)
+        self._lora = [m for m in self.net.modules()
+                      if isinstance(m, LoRALinear)]
+
+    def decode(self, token_ids, coeff, pad_mask):
+        ids = torch.as_tensor(token_ids, device=self.device)
+        cf = torch.as_tensor(coeff.astype(np.float32), device=self.device)
+        kp = torch.as_tensor(pad_mask, device=self.device)
+        h, w, c = self.out_shape
+        self._set_coeff(cf)
+        with torch.no_grad():
+            x = self.net.embed(ids) + self.net.pos[None]
+            for blk in self.net.blocks:
+                x = blk(x, kp)
+            q = self.net.qnorm(self.net.queries)[None].expand(len(ids), -1, -1)
+            feat = self.net.proj(self.net.cross(q, x, kp))   # (B, base^2, ch)
+            grid = feat.transpose(1, 2).reshape(len(ids), -1, self.base,
+                                                self.base)
+            out = torch.sigmoid(self.net.convs(grid))        # (B, c, h, w)
+        self._set_coeff(None)
+        return out.permute(0, 2, 3, 1).reshape(len(ids), h * w * c)
+
+
 @dataclass
 class Config:
     alphabet: int = 24
@@ -253,6 +309,7 @@ class Config:
     rank: int = 32
     children: int = 24
     epochs: int = 1200
+    decoder_kind: str = "transformer"   # "transformer" | "hybrid" (conv back)
     token_xover: bool = True          # cut only at BPE token boundaries
     bpe_every: int = 40               # learn one merge this often
     fold_every: int = 32
@@ -275,8 +332,10 @@ def run(images, out_shape, cfg: Config, seed=0, device="cpu", log=None):
         return vals
 
     bpe = BPE(cfg.alphabet, cfg.base_len, cfg.max_merges)
-    decoder = TransformerImageDecoder(bpe.vocab, cfg.base_len, out_shape,
-                                      device, rank=cfg.rank)
+    decoder_cls = (TransformerConvDecoder if cfg.decoder_kind == "hybrid"
+                   else TransformerImageDecoder)
+    decoder = decoder_cls(bpe.vocab, cfg.base_len, out_shape, device,
+                          rank=cfg.rank)
     select = make_species_selection(cfg.outcross)
 
     # seed two individuals per image
