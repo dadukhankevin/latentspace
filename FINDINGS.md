@@ -2696,7 +2696,15 @@ The legacy engine evolves millions of private weights and keeps the
 crown. The invariant-compatible lever for the gap: evolve the SHARED
 LoRA directions themselves (one set, globally, via the same Adam-fold
 pattern) so the vocabulary of bendings improves instead of staying
-random — designed, not built. Scoreboard tonight: parity on many
+random — built same day and FALSIFIED as built: a (1+1)-ES over the
+whole 3,580-weight vocabulary with population-mean acceptance rejected
+essentially all ~560 trials (apple 0.01268 @ 171k vs frozen 0.01222 @
+153k — a 12% trial tax and nothing else). Diagnosis: a random
+perturbation of something all 32 co-adapted individuals depend on almost
+never survives a population-wide vote — the chimera law again, one
+level deeper. Designed refinements, untested: one-direction-at-a-time
+proposals, share-weighted acceptance, trials timed right after folds.
+Default stays frozen; the arm ships as directions="evolve". Scoreboard tonight: parity on many
 problems at a tenth the machinery; the old champion holds single-fitness
 by a wide, explained margin. Run: benchmarks/demo_apple_live.py, seed 3.
 

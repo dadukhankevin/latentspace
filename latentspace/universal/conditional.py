@@ -115,6 +115,30 @@ class ConditionalLoRADecoder:
                             device=self.device),
             self.net.parameters())
 
+    def _direction_modules(self):
+        mods = []
+        for layer in self._lora:
+            mods.extend([layer.down, layer.up])
+        return mods
+
+    def direction_vector(self) -> np.ndarray:
+        """The shared low-rank directions — the vocabulary of bendings the
+        latents select from — as one flat vector, so evolution can treat
+        the vocabulary itself as a genome."""
+        return np.concatenate([
+            m.weight.detach().cpu().numpy().ravel()
+            for m in self._direction_modules()]).astype(np.float32)
+
+    def set_direction_vector(self, flat: np.ndarray) -> None:
+        offset = 0
+        with torch.no_grad():
+            for m in self._direction_modules():
+                n = m.weight.numel()
+                m.weight.copy_(torch.as_tensor(
+                    flat[offset:offset + n], device=self.device
+                ).reshape(m.weight.shape))
+                offset += n
+
     def absorb(self, coeff: np.ndarray) -> None:
         """Apply one individual's latents DIRECTLY into the backbone weights —
         exact arithmetic, no training (Daniel's fold semantics, 2026-07-21).
@@ -268,6 +292,26 @@ class ConditionalLoRAConv:
             torch.as_tensor(np.asarray(flat, dtype=np.float32),
                             device=self.device),
             self.net.parameters())
+
+    def _direction_modules(self):
+        m = self.net
+        return [m.fc_down, m.fc_up, *m.conv_down, *m.conv_up,
+                m.output_down, m.output_up]
+
+    def direction_vector(self) -> np.ndarray:
+        return np.concatenate([
+            mod.weight.detach().cpu().numpy().ravel()
+            for mod in self._direction_modules()]).astype(np.float32)
+
+    def set_direction_vector(self, flat: np.ndarray) -> None:
+        offset = 0
+        with torch.no_grad():
+            for mod in self._direction_modules():
+                n = mod.weight.numel()
+                mod.weight.copy_(torch.as_tensor(
+                    flat[offset:offset + n], device=self.device
+                ).reshape(mod.weight.shape))
+                offset += n
 
     def absorb(self, coeff: np.ndarray) -> None:
         """Direct latent application for the mixed-conditioning conv decoder:

@@ -221,7 +221,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           speciation=None,
           fold_selection=largest_niche_champion_fold_selection,
           fold="on", fold_every=32, fold_optimizer="adam",
-          fold_lr=0.5, win_target=0.2, dial_step=1.15,
+          fold_lr=0.5, directions="frozen", direction_every=16,
+          direction_sigma=0.1, win_target=0.2, dial_step=1.15,
           founding="per_function", progress=None, progress_every=None,
           seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.
@@ -233,6 +234,16 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         tracked and reported for honest cross-method comparison.
     genes / latents: sizes of the two spaces. Genes are the decoder's
         input; latents bend the shared decoder per individual.
+    directions: "frozen" (default). "evolve" trials perturbations of the
+        shared low-rank vocabulary as a (1+1) evolution strategy —
+        FALSIFIED as built (apple, 171k evals: 0.01268 vs frozen 0.01222;
+        ~560 trials, essentially all rejected, because a random
+        perturbation of the whole vocabulary almost never survives a
+        population-mean vote over 32 co-adapted individuals — it froze
+        itself and paid a 12% trial tax). Kept for iteration; the
+        designed refinements are one-direction-at-a-time proposals, a
+        share-weighted acceptance signal, and trialing right after folds
+        when the vocabulary is least load-bearing.
     fold: "on" treats proven individuals' latents as measured update
         directions for the shared decoder (Daniel's framing: evolution is
         computing gradients). Default: every `fold_every` epochs the
@@ -327,6 +338,14 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     adam_m = np.zeros(latents, dtype=np.float64)
     adam_v = np.zeros(latents, dtype=np.float64)
     adam_t = 0
+    # Direction evolution ((1+1)-ES on the shared low-rank vocabulary, with
+    # an Adam memory over ACCEPTED changes so proposals drift along what
+    # has historically worked — the round-50 pattern one level deeper).
+    dir_dial = 1.0
+    dir_dim = len(decoder.direction_vector()) if directions == "evolve" else 0
+    dir_m = np.zeros(dir_dim, dtype=np.float64)
+    dir_v = np.zeros(dir_dim, dtype=np.float64)
+    dir_t = 0
     history: list[dict] = []
 
     for epoch in range(int(epochs)):
@@ -439,6 +458,38 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             pop_latents[donor] -= step
             pop_score = score(pop_genes, pop_latents, pop_fn)
 
+        # --- direction evolution: trial a perturbation of the shared
+        # vocabulary itself. Accept if the living population, re-scored
+        # under the new directions, is on average better (per-individual
+        # relative change, so no function's scale dominates); reject
+        # restores the old vocabulary and the cached scores exactly. The
+        # trial's re-scoring is charged to the budget either way.
+        if directions == "evolve" and (epoch + 1) % int(direction_every) == 0:
+            base_dir = decoder.direction_vector()
+            scale = max(float(base_dir.std()), 1e-4)
+            noise = rng.standard_normal(dir_dim)
+            step = direction_sigma * scale * dir_dial * noise
+            if dir_t > 0:
+                drift = (dir_m / (1 - 0.9 ** dir_t)) / (
+                    np.sqrt(dir_v / (1 - 0.999 ** dir_t)) + 1e-8)
+                step = step + 0.5 * direction_sigma * scale * dir_dial * drift
+            decoder.set_direction_vector(
+                (base_dir + step).astype(np.float32))
+            old_scores = pop_score.copy()
+            trial_scores = score(pop_genes, pop_latents, pop_fn)
+            gain_rel = np.mean((trial_scores - old_scores)
+                               / np.maximum(np.abs(old_scores), 1e-12))
+            if gain_rel >= 0:
+                pop_score = trial_scores
+                dir_dial = min(dir_dial * dial_step, 1e3)
+                dir_t += 1
+                dir_m = 0.9 * dir_m + 0.1 * step
+                dir_v = 0.999 * dir_v + 0.001 * step * step
+            else:
+                decoder.set_direction_vector(base_dir)
+                pop_score = old_scores
+                dir_dial = max(dir_dial / dial_step, 1e-3)
+
         if progress is not None and (epoch + 1) % (
                 progress_every or max(1, int(epochs) // 50)) == 0:
             progress(epoch + 1, int(epochs), int(spent),
@@ -452,6 +503,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             "functions_tried": int(np.isfinite(best_score).sum()),
             "gene_dial": float(gene_dial),
             "latent_dial": float(latent_dial),
+            "direction_dial": float(dir_dial),
             "mean_score": float(pop_score.mean()),
         })
 
