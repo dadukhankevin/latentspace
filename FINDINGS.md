@@ -2751,3 +2751,23 @@ rotating-panel harness at 1,024 starved 384 targets outright; the lazy
 library visits every family (guarantee held: worst family 0.0% but
 visited). Runs: live `demo_solve_live --count 1024 --budget 160000`,
 hot arms in-session (numbers above).
+
+
+**CORRECTION to round six (the paired seeds arrived): the "frozen
+ceiling breaks" claim is RETRACTED.** Completing the pairs the original
+claim lacked: apple at ~153k evaluations, frozen vs per-individual
+vocabularies at 10% fresh — seed 3: 0.012218 vs 0.011152 (individual
+better); seed 4: 0.011262 vs 0.015383 (frozen better); seed 5:
+0.016338 vs 0.013291 (individual better). Mean 0.013273 vs 0.013275 —
+a dead tie, with seed noise (frozen alone spans 0.0113-0.0163, +-30%)
+dwarfing every delta. On the 16-image multi-function benchmark the
+per-individual vocabularies LOSE on all 3 seeds (0.0308 vs 0.0256,
+~20%). Verdict: directions stay FROZEN everywhere;
+directions="individual" remains a research arm. What survives of round
+six: fresh-vocabulary-every-child is catastrophic (0.098, a real 8x
+effect), and the 306k long run's 0.010670 is unpaired and unverified.
+The meta-lesson, for the third time this campaign: the original claim
+was one seed with an eval-matched probe ON THE SAME SEED — apple seed
+variance makes every single-seed apple claim worthless; three paired
+seeds minimum on that benchmark, forever. The single-function gap to
+the legacy records (0.00178) is fully open again, bottleneck unknown.
