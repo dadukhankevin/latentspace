@@ -2840,3 +2840,25 @@ coordinates so folds compose instead of collide. If shared-site sparse
 matches frozen on multi-function AND keeps the apple win, it is the
 default. Run: benchmarks/demo_solve_live.py --directions sparse
 --latents 2048.
+
+**Round eight — TSP on the new universal engine: a clean, expected
+loss.** First time the redesigned solve() has been pointed at
+permutations (random-keys encoding: decoder emits N priorities in
+[0,1], argsort -> tour). TSP-50, 3 seeds, ~20k evals: new GA 17.7 vs
+traditional tour GA 6.0, direct CMA-ES 8.9, nearest-neighbor 7.3 —
+loses to everything including greedy. Not a bug, two known reasons:
+(1) random keys are the decoder GA's weak domain (round 21: index-space
+priors are negative knowledge for permutations; small priority nudges
+reorder no cities, so a decoder biased toward smooth neighboring outputs
+searches a chaotic step landscape) — 17.7 matches the plain decoder GA's
+historical ~15.7 at this size; (2) the decoder that WON TSP (the
+anchor-field grammar reading city coordinates, round 25/33, beat the
+tour GA 9/1 at 50 and pulled ahead from 100+) lives only in
+benchmarks/legacy_engines + round25_anchor_field.py and was never ported
+into the new library, so the universal default searches blind to the
+instance geometry. Scoreboard: the redesign is strong on continuous
+outputs (near the apple record) and out-of-the-box no better at TSP than
+any latent decoder ever was. The open problem is unchanged and now the
+biggest gap: port the anchor grammar and give solve() a channel for a
+fitness function to hand its decoder the instance data it reads. Run:
+benchmarks/tsp_new_ga.py.
