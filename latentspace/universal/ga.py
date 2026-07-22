@@ -235,7 +235,13 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         tracked and reported for honest cross-method comparison.
     genes / latents: sizes of the two spaces. Genes are the decoder's
         input; latents bend the shared decoder per individual.
-    directions: "frozen" (default). "evolve" trials perturbations of the
+    directions: "frozen" (default). "sparse" replaces low-rank bending
+        with a per-individual SPARSE WEIGHT PATCH (Daniel, 2026-07-22):
+        the individual's seed picks `latents` coordinates of the decoder's
+        weight vector and its latents are the values added there, so folds
+        can reach any weight instead of being trapped in a frozen random
+        subspace forever. Locations inherit with the latents; a
+        `fresh_basis_rate` fraction of children draw new ones. "evolve" trials perturbations of the
         shared low-rank vocabulary as a (1+1) evolution strategy —
         FALSIFIED as built (apple, 171k evals: 0.01268 vs frozen 0.01222;
         ~560 trials, essentially all rejected, because a random
@@ -273,8 +279,13 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         device = "mps" if torch.backends.mps.is_available() else "cpu"
     rng = np.random.default_rng(seed)
     torch.manual_seed(int(rng.integers(0, 2 ** 31)))
-    decoder = build_conditional_decoder(
-        architecture, genes, output_shape, latents, device)
+    if directions == "sparse":
+        from .sparse import build_sparse_decoder
+        decoder = build_sparse_decoder(
+            architecture, genes, output_shape, latents, device)
+    else:
+        decoder = build_conditional_decoder(
+            architecture, genes, output_shape, latents, device)
     if directions == "individual":
         from .conditional import attach_seeded_directions
         attach_seeded_directions(decoder)
@@ -338,7 +349,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         pop_genes = rng.standard_normal((2, genes)).astype(np.float32)
         pop_latents = rng.standard_normal((2, latents)).astype(np.float32)
         pop_fn = np.zeros(2, dtype=np.int64)
-    seeded = directions == "individual"
+    seeded = directions in ("individual", "sparse")
     pop_basis = (rng.integers(0, 2 ** 31, n0) if seeded
                  else np.zeros(n0, dtype=np.int64))
     pop_score = score(pop_genes, pop_latents, pop_fn,

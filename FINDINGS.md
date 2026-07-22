@@ -2771,3 +2771,41 @@ was one seed with an eval-matched probe ON THE SAME SEED — apple seed
 variance makes every single-seed apple claim worthless; three paired
 seeds minimum on that benchmark, forever. The single-function gap to
 the legacy records (0.00178) is fully open again, bottleneck unknown.
+
+**Round seven — per-individual SPARSE WEIGHT PATCHES (Daniel: "each
+individual directly mutates the decoder's weights... just each one
+selects a section and a modifier"). The first mechanism to move the
+single-function number substantially.** Built as
+`directions="sparse"` (latentspace/universal/sparse.py): an individual's
+integer seed picks K coordinates of the decoder's flat weight vector and
+its latents are the values added there — one shared backbone, no
+per-individual weight matrices (K values + one int per individual), and
+folding becomes an exact scatter-add that can reach ANY weight instead
+of being trapped in the frozen low-rank span forever. Decode is one
+vmapped call over per-individual materialized weights, so speed matches
+the low-rank path.
+
+Apple, ~153k evaluations, K=2048 at 10% fresh sites vs the frozen
+low-rank default, PAIRED: seed 3 0.005921 vs 0.012218; seed 4 0.007374
+vs 0.011262; seed 5 0.009625 vs 0.016338 — better on all three, mean
+0.00764 vs 0.01327 (1.7x), margins well outside the +-30% seed band
+that invalidated round six. Patch size is monotone on seed 3: K=128
+0.0457 (too few), 512 0.0120, 2048 0.0059, 8192 0.0058. Fresh-sites
+rate helps (0.3: 0.00719 vs 0.0: 0.00814) — consistent with round 37's
+"WHERE carries no inheritable information" while still leaving
+sparse-free strictly better than subspace-locked.
+
+Decomposition (seed 3, the capacity control that matters): low-rank
+latents=64 0.01222 -> low-rank latents=2048 0.00857 -> sparse K=2048
+0.00592. So ~60% of the gain is CAPACITY (the shipped default starved
+individuals at 64 evolvable numbers) and ~30%+ is genuinely FREE
+PLACEMENT at matched capacity. The apple decoder has 47,155 weights, so
+K=2048 touches 4.3% of them.
+
+Status: the capacity control is SINGLE-SEED (the round-six lesson says
+that is not enough on this benchmark) and K=8192 is single-seed; both
+need pairs before defaults change. Nothing shipped as default yet.
+Context for the remaining gap: legacy bars 0.004566 @ 120k and 0.001780
+@ 150k — sparse K=2048/8192 is now within ~1.3x of the round-31 bar,
+from 2.7x behind at round five. Runs: scratchpad sparse_apple.py,
+sparse_capacity.py (stopped early for thermal reasons; partial).
