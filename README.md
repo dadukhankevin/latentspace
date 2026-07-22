@@ -19,14 +19,22 @@ def fitness(phenotypes):           # torch tensor (B, 32, 32), values in [0, 1]
 
 result = solve(fitness, output_shape=(32, 32), budget=5_000)
 result.best_phenotype              # (32, 32) array — the best solution found
+
+# Many problems? Same call — pass a list and they share one population
+# (measured: beats separate runs at every equal-per-problem budget):
+result = solve([fit_a, fit_b, fit_c], output_shape=(32, 32), budget=30_000)
+result.problems[1].best_phenotype
 ```
 
-**The evidence** (10 paired seeds, identical evaluation budgets; full
-campaign in [FINDINGS.md](FINDINGS.md)): on a hidden-image benchmark this
-beats a traditional GA with hand-matched mutation **10 runs to 0, 2.8×
-better**, given nothing but the fitness function. On a smooth-signal
-benchmark it's a statistical tie. Discrete problems (tours, bitstrings)
-remain unsolved by anything latent — see the open problems.
+**The evidence** (paired seeds, identical evaluation budgets; full
+campaign in [FINDINGS.md](FINDINGS.md)): given nothing but a fitness
+function, pure decoder evolution beats a traditional GA with hand-matched
+mutation on hidden-image benchmarks (10 runs to 0), beats a
+50-city-tour GA with segment-reversal mutation (9 runs to 1, +33% at 100
+cities), and — with the self-tuning mutation step that is now the
+default — beats CMA-ES on a 256-dim smooth curve, CMA-ES's own home
+terrain, plus every hybrid that uses CMA-ES internally. Sixty-plus
+falsified ideas along the way are documented next to the wins.
 
 ## How it works
 
@@ -34,21 +42,38 @@ remain unsolved by anything latent — see the open problems.
 
 ```
 EXPLORE   Population of 32 individuals, each = genome + private decoder
-          weights. Children get noisy copies of both. 32 independent
-          lineages make 32 independent kinds of mistake — on purpose.
-          Ends automatically when improvement stalls.
+          weights. Children are born by crossover, then both tensors
+          mutate. 32 independent lineages make 32 independent kinds of
+          mistake — on purpose. Mutation size steers itself by
+          Rechenberg's 1/5th rule: grow the step while >20% of children
+          beat their parents, shrink it otherwise. One run spans a ~150x
+          step range, sledgehammer to chisel, with no problem-specific
+          constants. Restarts fresh when improvement stalls, until the
+          budget is spent.
 
-DISTILL   Compress the run's best few hundred fitness-vetted solutions
-          into a small linear latent space (PCA in logit space).
-          Independent errors cancel; shared structure survives.
+DISTILL   (optional, exploit="ga") Compress the run's best few hundred
+          fitness-vetted solutions into a small linear latent space
+          (PCA in logit space). Independent errors cancel; shared
+          structure survives.
 
-EXPLOIT   CMA-ES over that latent space with the remaining budget —
-          recombining everything exploration learned.
+EXPLOIT   (optional, exploit="ga") A latent-space GA — truncation
+          selection, uniform crossover, win-rate mutation — evolves
+          genotypes feeding the distilled decoder with the remaining
+          budget. CMA-ES appears in this project ONLY as a baseline to
+          beat; it is not part of the solver.
 ```
 
-Each phase is a replaceable module (`latentspace.universal.explorer`,
-`.distill`, `.cma`). All three are load-bearing: benchmarked ablations show
-removing any one of them collapses the result.
+At no point in any phase is a phenotype mutated, crossed, or otherwise
+operated on — solutions are only ever *computed* from a genotype through a
+decoder, then scored. Exploration searches (genome, decoder-weight) pairs;
+exploitation searches genomes feeding the distilled decoder. That invariant
+is what makes the algorithm universal.
+
+Pure decoder evolution end-to-end is the measured robust default: the
+exploit ablation found the distilled space itself fails on ~3/10 image
+seeds (any optimizer confined to it is trapped — GA-exploit and
+CMA-exploit failures correlate 0.97), while pure evolution passed every
+seed, at negligible cost on smooth signals.
 
 ## Decoder architectures
 
@@ -80,7 +105,11 @@ solve(fitness, output_shape=(64, 64), architecture="my-arch")
 solve(
     fitness, output_shape=(32, 32),
     budget=5_000,             # exact number of fitness evaluations
-    latent=32,                # distilled search-space dimension
+    latent=64,                # genome + distilled search-space dimension.
+                              #   Benchmarked: cliff below ~32, broad
+                              #   plateau 32-128, best means/variance at 64.
+                              #   Scale with solution variety, not output
+                              #   size; keep distill_top >= ~3x latent.
     explore_fraction="auto",  # stall-based switch (benchmarked better than
                               #   any fixed split); or a float like 0.6
     distill_top=200,          # solutions compressed into the latent space
