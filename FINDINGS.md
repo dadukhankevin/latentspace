@@ -2683,6 +2683,23 @@ levels of the system. Shipped defaults: fold_optimizer="adam",
 fold_every=32, fold_lr=0.5. Untested: cadence and lr response curves
 beyond these points, and the fold-selection function. Tests 23/23.
 
+**Round five — the apple, live, one function: the redesign LOSES the
+single-fitness flagship, 0.012218 at 153k evaluations vs the legacy
+bars 0.004566 @ 120k and 0.00178 @ 150k (2.7x / 6.9x behind), with a
+clear plateau from ~130k.** Mechanism, structural not tunable: with one
+function the design's whole expressiveness is 128 evolvable numbers
+steering FROZEN RANDOM low-rank directions; the fold moves what latents
+can express into the backbone, but the reachable set is bounded by the
+random directions' span — round 36's low-rank-costs-quality
+measurement, amplified because exploration never touches the backbone.
+The legacy engine evolves millions of private weights and keeps the
+crown. The invariant-compatible lever for the gap: evolve the SHARED
+LoRA directions themselves (one set, globally, via the same Adam-fold
+pattern) so the vocabulary of bendings improves instead of staying
+random — designed, not built. Scoreboard tonight: parity on many
+problems at a tenth the machinery; the old champion holds single-fitness
+by a wide, explained margin. Run: benchmarks/demo_apple_live.py, seed 3.
+
 **Scale probe (same day): 1,024 problems / 160k evaluations (156 per
 problem) — the cold-start default fails at extreme problem counts, and
 the hot-start rule turns out to be per-family, not per-harness.** Library
