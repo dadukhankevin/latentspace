@@ -558,6 +558,130 @@ distill → exploit with pluggable architectures); six CPU tests in
 `tests/test_universal.py` and a 3-seed MPS parity check reproduce the
 benchmark numbers through the public API.
 
+## Round 19 — latent-size sweep through the packaged API (`round19_latent_sweep.py`)
+
+Is 32 the right latent? Sweep {8, 16, 32, 64, 128}, 10 paired seeds, both
+standing problems, run entirely through `latentspace.universal.solve`.
+
+| latent | smooth1d_256 | blob2d_1024 |
+|---:|---:|---:|
+| 8 | 0.0463 | 0.0647 |
+| 16 | 0.0239 | 0.0506 |
+| 32 | 0.0203 | 0.0194 |
+| 64 | 0.0199 | **0.0165** |
+| 128 | 0.0249 | 0.0165 |
+
+Cliff below 32 (blob: 16 loses to 32 on 0/10 seeds, giving back half the
+win over the direct GA — the space must exceed the intrinsic variety of
+good solutions, with headroom). 32/64/128 are pairwise indistinguishable
+(all CIs span zero), but 64 has the best means on both problems, halves
+blob seed variance (stdev 0.0026 vs 0.0052), and gives the tightest GA win
+recorded (10/0, CI [−0.0444, −0.0389]). 128 pays a small noise tax on
+smooth: fitting 128 directions from 200 distilled solutions. Package
+default moved to 64; `distill_top` should scale >= ~3x latent. Untested:
+decoupling genome size (exploration) from distilled dimension (exploit).
+
+## Rounds 19b/19c — does the stack need CMA-ES, and does it beat pure CMA-ES? (`round19b_no_cma.py`)
+
+19b: identical exploration and distilled decoder, but the exploit phase's
+genotype evolution swapped from CMA-ES to a plain fixed-sigma GA (uniform
+crossover, 0.1/0.12 mutation, the original evolver's rates). Catastrophic:
+smooth 0.0742, blob 0.0893 — 0/10 vs the CMA exploit on both problems
+(3.7-4.6x worse), and worse than never distilling at all. The distilled
+space's directions have wildly different fitness sensitivities; adapting
+per-direction step sizes is what CMA-ES is for, and a fixed-sigma GA
+random-walks the sensitive axes. CMA-ES stays on merit — and it is itself
+an evolution strategy over genotypes; no phenotype is touched.
+
+19c: pure direct CMA-ES on the raw solution values (no decoder anywhere),
+10 seeds (`mps_round19c_direct_cma.json`):
+
+| method | smooth1d_256 (256-d) | blob2d_1024 (1,024-d) |
+|:---|---:|---:|
+| direct CMA-ES on raw values | **0.00075** | 0.04377 |
+| universal stack (adaptive, latent 64 era: 32) | 0.02028 | **0.01938** |
+
+Split verdict, both 10/0: on the low-dimensional unimodal curve, direct
+CMA-ES is 27x better — continuous match-the-target at 256-d is its home
+terrain and the stack should not be used there. On the 1,024-d image the
+wall flips: full-covariance adaptation starves at 5,000 evals and the
+learned decoders' 64 directions beat raw search 2.3x. Combined with round
+4 (multimodal ruggedness kills direct CMA even at 256-d, matched-decoder
+latent search wins 1.7x) the domain map is: direct CMA-ES for
+low-dimensional smooth continuous problems; the learned-decoder stack for
+high dimensions, multimodality, and everything that is not a flat float
+vector.
+
+## Round 20 — re-entering exploration: cycling falsified at tested budgets (`round20_cycle.py`)
+
+Daniel's proposal: an elegant solver should hand the budget back and forth
+between exploration and exploitation instead of running a one-way conveyor.
+Implemented as `phases="cycle"` in the packaged solver: the exploit phase
+gets the same stall rule as exploration (20 CMA generations without 1%
+relative improvement); on stall, exploration re-enters with half its
+population warm-started from the current distilled space decompressed into
+decoder weights + noise (round 12's escape channel) and half fresh (round
+15c's independence guardrail); the archive is cumulative and each cycle
+re-distills.
+
+Result, 10 paired seeds through the public API: cycling loses 0/10 on both
+problems — smooth +0.0014 (CI grazes zero), blob +0.0030 (CI [+0.0010,
++0.0051], ~18% worse). Diagnosis: CMA-ES convergence has natural mid-run
+plateaus before covariance adaptation pays off; a 20-generation patience
+amputates its endgame, and the re-entered exploration (epsilon-scale weight
+mutations around the incumbent manifold) cannot discover enough new
+geometry in the remaining budget to repay the theft. The long-budget
+regime offers no refuge either: the 150k-eval color-apple run's exploit
+phase was still improving at the final evaluation (0.18% over the last
+3,000) — the representation floor was never reached in any tested regime,
+and re-entering exploration only makes sense once it is. `phases="cycle"`
+stays in the package as a documented experimental option; the default
+remains the one-way stack. The open question worth a future round: trigger
+re-entry on a *converged* signal (CMA step-size collapse at the floor)
+rather than a stall heuristic.
+
+## Round 20b — the counterfactual: at long budgets the switch itself is the mistake
+
+Daniel questioned the color-apple demo's chart: exploration looked like it
+was on a fine trajectory when the stall rule handed off to CMA-ES. The
+counterfactual (same seed, identical run, hand-off disabled — deterministic
+prefix confirmed) settles it: CMA-ES sprints for ~25k evaluations
+(0.0217 -> 0.0132 by 100k vs exploration's 0.0169), then flattens at the
+ceiling of its frozen gene space (~0.011) while never-switched decoder
+evolution keeps compounding to **0.00493 — 2.3x better at 150k**
+(single seed, one problem). The stall rule fired during a slow patch, the
+mirror image of round 20's failure: BOTH phases have bumpy progress curves
+that stall heuristics misread.
+
+Related measurement (Daniel's naked-eye catch): the target's leaf region
+(3.5% of pixels) shows the frozen gene space's bias concretely — the
+switched run's leaf error is 5x its own typical error and painted
+anti-green (greenness -0.21 vs target +0.15), because no green-leaf
+variation existed in the distilled archive; the traditional GA, unbiased
+per-pixel, was slowly greening it. Small features that are worthless early
+(0.0013 of total error) become the bottleneck late (~12% of final error) —
+an accidental curriculum with no late-stage recovery under a frozen space.
+
+Regime map after 20b: short budgets — distill+CMA is worth 4x (round 17);
+long rich runs — evolving decoders outrun any frozen compression of
+themselves. Round-21 design: a rate-based scheduler (interleave the two
+forces, give budget to the better measured improvement rate), which would
+have ridden the CMA sprint and returned to exploration when the rates
+crossed. Counterfactual rerun with frames answered the leaf question, and it
+CORRECTS the paragraph above: the leaf did NOT turn green even with no
+compression and 150k evaluations of free evolution (leaf greenness -0.20,
+identical to the switched run's -0.21, vs target +0.15) — despite the leaf
+being ~21% of the run's remaining error by the end. The bias is NOT the
+distillation's: it lives in the exploration lineages' inductive
+bias/reachability — every individual descends from dark-blob-painting
+ancestors and weight mutation never escaped that basin; only the unbiased
+per-pixel GA was slowly greening it (-0.05). New open problem: rare local
+features unreachable from the founding basin — candidate fixes are lineage
+diversity mechanisms (decoder-family crossover, round-13 repulsion), not
+more budget. Counterfactual final: 0.00493 (best result ever on this
+problem, pure decoder evolution, no CMA-ES anywhere); demo artifact shows
+its animation and the four-way finals.
+
 Raw results: `mps_round1_deceptive_5000.json`, `mps_round2_shifted_5000.json`,
 `mps_round3_structure_5000.json`, `mps_round4_latent_cma_1000.json`,
 `mps_round4_latent_cma_5000.json`, `mps_round5_image_5000.json`,
@@ -578,4 +702,7 @@ transcribed in the round-13 stats; blob seeds 6–9 were rerun into the JSON),
 `mps_round16b_explore_distill_conv.json`,
 `mps_round16c_confirmation_10seed.json`,
 `mps_round17_architecture_prior.json`,
-`mps_round18_adaptive_10seed.json`.
+`mps_round18_adaptive_10seed.json`,
+`mps_round19_latent_sweep.json`, `mps_round19b_no_cma.json`,
+`mps_round20_cycle_5000.json`,
+`mps_round19c_direct_cma.json`.
