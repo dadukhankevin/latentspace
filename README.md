@@ -65,6 +65,25 @@ latents as one string of numbers, and every step above — selection, both
 crossovers, both mutations, speciation, fold selection — is a replaceable
 function you can pass into `solve()`.
 
+**How latents modify the decoder** is itself a choice, because there is
+always exactly one decoder and only the form of the small per-individual
+modifier changes:
+
+```python
+solve(fitness, output_shape=(96, 96, 3), epochs=9_000,
+      directions="sparse", latents=2048)   # sparse weight patches
+```
+
+`"frozen"` (default) gates a fixed set of random low-rank directions —
+cheap, but every individual and every fold is confined to that subspace
+forever. `"sparse"` instead gives each individual K freely-placed weight
+coordinates (its seed picks them, its latents are the values added
+there), so folds can reach any weight. Measured on the apple photo at
+matched budget, three paired seeds: sparse at K=2048 beat frozen on all
+three, mean MSE 0.0076 vs 0.0133. It is not yet the default — the
+control runs separating "more evolvable numbers" from "free placement"
+are single-seed so far, and the multi-function check is unrun.
+
 **The evidence** (paired seeds, identical evaluation counts; the full
 falsification-heavy campaign is in [FINDINGS.md](FINDINGS.md)): this
 design, one day old, statistically ties the heavily tuned predecessor

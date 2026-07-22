@@ -90,6 +90,40 @@ def test_gene_crossover_is_one_point_within_genes_only():
         assert len(flips) == 1      # exactly one cut, inside the genes
 
 
+def test_sparse_patch_mode_runs_and_improves():
+    target = (np.sin(np.linspace(0, 2 * np.pi, 32)) * 0.3 + 0.5)
+    result = solve(_curve_fitness(target), output_shape=(32,), epochs=80,
+                   genes=8, latents=64, children=8, device="cpu",
+                   directions="sparse", seed=1)
+    assert result.best_phenotype.shape == (32,)
+    assert result.best_fitness > result.problems[0].initial_fitness
+
+
+def test_sparse_patch_keeps_one_decoder_and_folds_exactly():
+    # The invariant: one shared backbone, a per-individual modifier that is
+    # K values + one integer — never a per-individual weight matrix. And a
+    # fold is an exact scatter-add, so absorbing a donor's patch and zeroing
+    # its values reproduces that donor's phenotype bit-for-bit.
+    from latentspace.universal.sparse import SparsePatchDecoder
+
+    decoder = SparsePatchDecoder("auto", 8, (16,), patch_size=32,
+                                 device="cpu")
+    rng = np.random.default_rng(0)
+    z = rng.standard_normal((1, 8)).astype(np.float32)
+    values = rng.standard_normal((1, 32)).astype(np.float32)
+    seeds = np.array([12345])
+
+    before = decoder.decode_seeded(z, values, seeds).numpy()
+    assert decoder.patch_size < decoder.n_params      # genuinely sparse
+    decoder.absorb_seeded(values[0], int(seeds[0]))
+    after = decoder.decode_seeded(z, np.zeros_like(values), seeds).numpy()
+    assert np.abs(before - after).max() < 1e-5
+
+    # sites are a pure function of the seed, so locations cost one integer
+    assert np.array_equal(decoder.sites_for(7), decoder.sites_for(7))
+    assert not np.array_equal(decoder.sites_for(7), decoder.sites_for(8))
+
+
 def test_dials_adapt():
     target = np.full(24, 0.6)
     result = solve(_curve_fitness(target), output_shape=(24,), epochs=50,

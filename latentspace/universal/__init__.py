@@ -16,6 +16,10 @@ allowed; speciation re-assigning individuals across fitness functions over
 time; and one shared decoder that discoveries are folded into. Every
 operator is a replaceable function.
 
+The per-individual modifier's FORM is a first-class choice: low-rank
+gating of frozen random directions (default) or sparse weight patches
+(`directions="sparse"`, see sparse.py) — one shared decoder either way.
+
 The retired engines (the per-individual explorer stack that holds the
 single-fitness records, the champion-per-problem population, distill, and
 the CMA-ES baseline) live in benchmarks/legacy_engines/ — benchmark
