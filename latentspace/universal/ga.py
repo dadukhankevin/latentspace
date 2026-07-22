@@ -222,7 +222,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           fold_selection=largest_niche_champion_fold_selection,
           fold="on", fold_every=32, fold_optimizer="adam",
           fold_lr=0.5, win_target=0.2, dial_step=1.15,
-          founding="per_function", seed=None) -> GAResult:
+          founding="per_function", progress=None, progress_every=None,
+          seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.
 
     fitness_fns: one callable or a list. Each takes a torch tensor
@@ -438,6 +439,11 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             pop_latents[donor] -= step
             pop_score = score(pop_genes, pop_latents, pop_fn)
 
+        if progress is not None and (epoch + 1) % (
+                progress_every or max(1, int(epochs) // 50)) == 0:
+            progress(epoch + 1, int(epochs), int(spent),
+                     [None if b is None else b.copy() for b in best_pheno],
+                     best_score.copy())
         history.append({
             "epoch": epoch,
             "evaluations": int(spent),

@@ -48,9 +48,9 @@ from benchmarks.round21_tsp import (direct_cma, make_instance,
                                     tour_lengths_np, traditional_tour_ga)
 from latentspace.training import PermutationTrainer
 from latentspace.universal.architectures import resolve
-from latentspace.universal.cma import cma_minimize
-from latentspace.universal.distill import distill
-from latentspace.universal.explorer import ExplorerConfig, PerIndividualExplorer
+from benchmarks.legacy_engines.cma import cma_minimize
+from benchmarks.legacy_engines.distill import distill
+from benchmarks.legacy_engines.explorer import ExplorerConfig, PerIndividualExplorer
 
 LATENT = 64
 DISTILL_TOP = 200

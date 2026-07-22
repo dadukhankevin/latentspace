@@ -31,8 +31,8 @@ from PIL import Image
 from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round28_anchor_conv import ConvRGB
 from benchmarks.round31_apple_animated import _png
-from latentspace.universal import solve
-from latentspace.universal.explorer import ExplorerConfig
+from benchmarks.legacy_engines.solver import solve_single as solve
+from benchmarks.legacy_engines.explorer import ExplorerConfig
 
 
 class WhiteCanvas(torch.nn.Module):

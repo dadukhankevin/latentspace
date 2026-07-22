@@ -50,7 +50,7 @@ from benchmarks.round3_structure import SmoothTarget
 from benchmarks.round8_mlp_pretrain import BlobImage2D
 from benchmarks.round26_anchor_universal import build_anchor
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 GAIN_LIMITS = (1e-2, 1e4)

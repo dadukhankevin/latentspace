@@ -55,7 +55,7 @@ import torch
 from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round45_decoder_inheritance import make_problem
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 B1, B2 = 0.9, 0.999      # Adam moments

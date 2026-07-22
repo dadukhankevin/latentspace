@@ -18,7 +18,7 @@ import numpy as np
 import torch
 from torch.func import functional_call, vmap
 
-from latentspace.universal.explorer import _Template
+from benchmarks.legacy_engines.explorer import _Template
 
 
 class BatchedTemplate(_Template):

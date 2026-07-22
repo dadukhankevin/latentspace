@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import torch
 
-from .conditional import build_conditional_decoder
+from latentspace.universal.conditional import build_conditional_decoder
 from .explorer import ExplorerConfig
 
 

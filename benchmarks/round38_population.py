@@ -41,8 +41,8 @@ from benchmarks.round3_structure import SmoothTarget
 from benchmarks.round8_mlp_pretrain import BlobImage2D
 from benchmarks.round21_tsp import make_instance, nearest_neighbor_length
 from benchmarks.round25_anchor_field import AnchorFieldTransformer
-from latentspace.universal import solve
-from latentspace.universal.explorer import ExplorerConfig
+from benchmarks.legacy_engines.solver import solve_single as solve
+from benchmarks.legacy_engines.explorer import ExplorerConfig
 
 TSP_CITIES = 100
 

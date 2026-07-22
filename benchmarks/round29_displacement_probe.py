@@ -20,7 +20,7 @@ real phenotype step size has been wandering uncontrolled the whole time,
 and targeting displacement is the fix.
 
 Method: run ordinary per-individual evolution (mutation code mirrored
-from `latentspace.universal.explorer` exactly, including the theta.std()
+from `benchmarks.legacy_engines.explorer` exactly, including the theta.std()
 rescale). Every `--probe-every` generations, freeze the current best
 individual and apply each channel's mutation ALONE at fixed nominal
 sigmas, decoding K probes per setting and recording the RMS phenotype
@@ -47,7 +47,7 @@ from benchmarks.round3_structure import SmoothTarget
 from benchmarks.round8_mlp_pretrain import BlobImage2D
 from benchmarks.round26_anchor_universal import build_anchor
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 GENOME_PROBE_SIGMAS = (0.12,)

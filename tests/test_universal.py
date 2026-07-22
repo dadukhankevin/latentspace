@@ -9,15 +9,11 @@ import torch
 """These tests cover the LEGACY engines (per-individual explorer stack and
 champion-per-problem population), which are benchmark opponents now, not the
 API. The API is tested in test_ga.py."""
-from latentspace.universal import (
-    LatentSpace,
-    distill,
-    register_architecture,
-    resolve,
-)
-from latentspace.universal.explorer import ExplorerConfig  # noqa: F401
-from latentspace.universal.multi import solve_many
-from latentspace.universal.solver import solve_single as solve
+from latentspace.universal import (register_architecture, resolve)
+from benchmarks.legacy_engines.distill import LatentSpace, distill
+from benchmarks.legacy_engines.explorer import ExplorerConfig  # noqa: F401
+from benchmarks.legacy_engines.multi import solve_many
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 
 def _curve_fitness(target):
@@ -107,7 +103,7 @@ def test_solve_default_is_pure_decoder_evolution():
     assert result.explore_evaluations == 600
     assert result.latent_space is None
     import inspect
-    from latentspace.universal import solver
+    from benchmarks.legacy_engines import solver
     assert "cma" not in inspect.getsource(solver).replace(
         "cma.py exists", "")
 

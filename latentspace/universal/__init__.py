@@ -16,14 +16,12 @@ allowed; speciation re-assigning individuals across fitness functions over
 time; and one shared decoder that discoveries are folded into. Every
 operator is a replaceable function.
 
-Legacy engines (the per-individual-weights explorer stack in solver.py /
-explorer.py, and the champion-per-problem population in multi.py) are no
-longer part of the API. They remain importable from their modules ONLY as
-benchmark opponents — the records they hold are the bar the new design has
-to clear — alongside cma.py, the CMA-ES baseline.
+The retired engines (the per-individual explorer stack that holds the
+single-fitness records, the champion-per-problem population, distill, and
+the CMA-ES baseline) live in benchmarks/legacy_engines/ — benchmark
+opponents the new design has to beat, no longer part of the library.
 """
 from .architectures import build_mlp, register_architecture, resolve
-from .distill import LatentSpace, distill
 from .ga import (
     GAResult,
     ProblemResult,
@@ -47,5 +45,4 @@ __all__ = [
     "coin_flip_latent_inheritance", "make_gaussian_mutation",
     "make_random_speciation", "largest_niche_champion_fold_selection",
     "register_architecture", "resolve", "build_mlp",
-    "distill", "LatentSpace",
 ]

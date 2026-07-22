@@ -41,7 +41,7 @@ from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round27_apple_no_cma import DEMO, AnchorRGB, load_apple
 from benchmarks.round28_anchor_conv import ConvRGB
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 SHAPE = (3, 96, 96)

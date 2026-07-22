@@ -41,7 +41,7 @@ import torch
 from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round45_decoder_inheritance import make_problem
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 MOMENTUM_BETA = 0.7      # EMA horizon for the accepted-step path

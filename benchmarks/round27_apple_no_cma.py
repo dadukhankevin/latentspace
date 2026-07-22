@@ -46,8 +46,8 @@ import torch.nn as nn
 
 from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round26_anchor_universal import AnchorField, _site_grid
-from latentspace.universal import solve
-from latentspace.universal.cma import cma_minimize
+from benchmarks.legacy_engines.solver import solve_single as solve
+from benchmarks.legacy_engines.cma import cma_minimize
 
 CHANNELS = 16
 LATENT = 64

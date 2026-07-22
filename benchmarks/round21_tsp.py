@@ -34,8 +34,8 @@ import numpy as np
 import torch
 
 from benchmarks.compare import _require_mps, _seed_everything
-from latentspace.universal import solve
-from latentspace.universal.cma import cma_minimize
+from benchmarks.legacy_engines.solver import solve_single as solve
+from benchmarks.legacy_engines.cma import cma_minimize
 
 
 def make_instance(seed: int, n_cities: int) -> np.ndarray:

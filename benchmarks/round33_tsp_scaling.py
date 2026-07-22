@@ -38,7 +38,7 @@ from benchmarks.round21_tsp import (direct_cma, make_instance,
                                     nearest_neighbor_length,
                                     traditional_tour_ga)
 from benchmarks.round25_anchor_field import AnchorFieldTransformer
-from latentspace.universal import solve
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 
 def solve_arm(cities: np.ndarray, budget: int, seed: int,

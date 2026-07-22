@@ -1,10 +1,11 @@
-"""Live window for the LIBRARY's unified solve() — many images, one call.
+"""Live window for THE universal GA — solve(fitness_fns, output_shape, epochs).
 
-Same view as demo_image_lazy_population's --live, but everything on screen
-is `latentspace.universal.solve([fitness_fns...])` with shipped defaults:
-one shared conditional decoder, rare compatibility-gated crossover, and
-the self-tuning genes/latents mutation ratio. The window stays open after
-the run; close it to exit.
+Everything on screen is the redesigned engine with shipped defaults: seeded
+species, fitness shares, assortative selection with rare outcrossing, the
+two-space mutation dials, and the Adam fold absorbing species' consensus
+into the one shared decoder. Tiles show each function's best-ever solution
+from the bookkeeping archive. The window stays open after the run; close it
+to exit.
 """
 from __future__ import annotations
 
@@ -23,11 +24,9 @@ def main():
     parser.add_argument("--targets-dir",
                         default="/tmp/latentspace_cifar100_scaling_1024")
     parser.add_argument("--count", type=int, default=16)
-    parser.add_argument("--budget", type=int, default=48_000)
+    parser.add_argument("--epochs", type=int, default=1400)
     parser.add_argument("--seed", type=int, default=3)
-    parser.add_argument("--live-targets", type=int, default=16,
-                        help="how many problems the window tracks; the run "
-                             "always solves --count of them")
+    parser.add_argument("--live-targets", type=int, default=16)
     args = parser.parse_args()
 
     from PIL import Image
@@ -44,29 +43,31 @@ def main():
     initial = {}
 
     view = ReferenceSpeciesView(
-        names[:n_view], targets[:n_view].transpose(0, 3, 1, 2), args.budget)
+        names[:n_view], targets[:n_view].transpose(0, 3, 1, 2), args.epochs)
 
-    def progress(spent, budget, phenos, fits):
-        for name, fit in zip(names, fits):
-            initial.setdefault(name, -float(fit))
+    def progress(epoch, epochs, spent, phenos, scores):
+        for name, sc in zip(names, scores):
+            if np.isfinite(sc):
+                initial.setdefault(name, -float(sc))
         hall = [{
-            "image": phenos[i].reshape(32, 32, 3).transpose(2, 0, 1),
-            "score": float(fits[i]),
+            "image": (np.zeros((3, 32, 32), dtype=np.float32)
+                      if phenos[i] is None
+                      else phenos[i].reshape(32, 32, 3).transpose(2, 0, 1)),
+            "score": float(scores[i]),
         } for i in range(n_view)]
-        view.update(spent, hall)
-        removed = np.mean([100 * (1 - (-fits[i]) / initial[names[i]])
-                           for i in range(len(names))])
-        print(f"  {spent:>7} evals  mean removed {removed:.1f}% "
-              f"(all {len(names)})", flush=True)
+        view.update(epoch, hall)
+        known = [i for i, name in enumerate(names) if name in initial]
+        removed = np.mean([100 * (1 - (-scores[i]) / initial[names[i]])
+                           for i in known]) if known else 0.0
+        print(f"  epoch {epoch:>5}  {spent:>7} evals  "
+              f"mean removed {removed:.1f}%", flush=True)
 
-    result = solve(fns, output_shape=(32, 32, 3), budget=args.budget,
+    result = solve(fns, output_shape=(32, 32, 3), epochs=args.epochs,
                    seed=args.seed, progress=progress)
     removed = [100 * (1 - (-p.best_fitness) / -p.initial_fitness)
-               for p in result.problems]
-    print(f"final: mean {np.mean(removed):.1f}%  "
-          f"best {max(removed):.1f}%  hardest {min(removed):.1f}%")
-    ratios = [h["latent_ratio"] for h in result.history]
-    print(f"latents/genes mutation ratio self-tuned to {ratios[-1]:.2f}")
+               for p in result.problems if p.best_phenotype is not None]
+    print(f"final: mean {np.mean(removed):.1f}%  best {max(removed):.1f}%  "
+          f"hardest {min(removed):.1f}%  ({result.evaluations} evals)")
     print("run finished — close the live window to exit")
     view.plt.show(block=True)
 

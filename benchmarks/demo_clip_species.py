@@ -45,7 +45,7 @@ from benchmarks.demo_clip_evolve import CLIP_MEAN, CLIP_STD, load_clip
 from benchmarks.round28_anchor_conv import ConvRGB
 from benchmarks.round31_apple_animated import _png
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 SHAPE = (3, 96, 96)

@@ -40,7 +40,7 @@ from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round21_tsp import make_instance, traditional_tour_ga
 from benchmarks.round24_city_conditioned import CityConditionedTransformer
 from benchmarks.round25_anchor_field import AnchorFieldTransformer
-from latentspace.universal import solve
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 DECODERS = {
     "mlp_decoder": lambda cities: "mlp",

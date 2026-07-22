@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import torch
 
-from .architectures import resolve
+from latentspace.universal.architectures import resolve
 from .distill import LatentSpace, distill
 from .explorer import Archive, ExplorerConfig, PerIndividualExplorer
 from .exploit import ga_minimize

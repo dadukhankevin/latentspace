@@ -43,7 +43,7 @@ from benchmarks.demo_image_species_vector import (
 )
 from benchmarks.round28_anchor_conv import ConvRGB
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 
 def balanced_target_panel(

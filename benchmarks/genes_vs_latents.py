@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from latentspace.universal import solve_many
+from benchmarks.legacy_engines.multi import solve_many
 
 ARMS = {
     "base": {},

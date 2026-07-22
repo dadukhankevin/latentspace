@@ -44,7 +44,7 @@ from benchmarks.round25_anchor_field import AnchorFieldTransformer
 from benchmarks.round39_survivors import make_problem as _make_problem_39
 from benchmarks.round40_diversity_probe import _tsp_loss
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig
+from benchmarks.legacy_engines.explorer import ExplorerConfig
 
 
 def make_problem(name: str, seed: int):

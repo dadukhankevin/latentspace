@@ -53,7 +53,7 @@ import torch
 from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round39_survivors import make_problem
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 TOURNEY_K = 3

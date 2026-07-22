@@ -63,7 +63,7 @@ from benchmarks.round8_mlp_pretrain import BlobImage2D
 from benchmarks.round21_tsp import make_instance
 from benchmarks.round25_anchor_field import AnchorFieldTransformer
 from latentspace.universal.architectures import resolve
-from latentspace.universal.explorer import ExplorerConfig, _Template
+from benchmarks.legacy_engines.explorer import ExplorerConfig, _Template
 
 LATENT = 64
 TSP_CITIES = 100

@@ -44,7 +44,7 @@ import torch
 from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round21_tsp import (make_instance, nearest_neighbor_length,
                                     tour_lengths_np, traditional_tour_ga)
-from latentspace.universal import solve
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 
 def tours_from_edge_scores(scores: np.ndarray) -> np.ndarray:

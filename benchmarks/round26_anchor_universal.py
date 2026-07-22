@@ -59,7 +59,7 @@ from benchmarks.compare import (BenchmarkConfig, _require_mps,
                                 _seed_everything, run_direct_ga)
 from benchmarks.round3_structure import SmoothTarget
 from benchmarks.round8_mlp_pretrain import BlobImage2D
-from latentspace.universal import solve
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 CHANNELS = 16
 ANCHORS = 8

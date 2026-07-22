@@ -26,7 +26,7 @@ import torch
 from benchmarks.compare import Objective, _require_mps, _seed_everything
 from benchmarks.round3_structure import SmoothTarget
 from benchmarks.round8_mlp_pretrain import BlobImage2D
-from latentspace.universal import solve
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 OBJECTIVES: dict[str, tuple[Callable[[], Objective], tuple]] = {
     "smooth1d_256": (SmoothTarget, (256,)),

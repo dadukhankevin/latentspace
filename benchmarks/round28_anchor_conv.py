@@ -45,7 +45,7 @@ import torch.nn as nn
 from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round26_anchor_universal import AnchorField, _site_grid
 from benchmarks.round27_apple_no_cma import DEMO, AnchorRGB, load_apple
-from latentspace.universal import solve
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 LATENT = 64
 

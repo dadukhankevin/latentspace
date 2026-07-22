@@ -30,7 +30,7 @@ from benchmarks.compare import _require_mps, _seed_everything
 from benchmarks.round27_apple_no_cma import DEMO, load_apple
 from benchmarks.round28_anchor_conv import ConvRGB
 from benchmarks.round31_apple_animated import _png
-from latentspace.universal import solve
+from benchmarks.legacy_engines.solver import solve_single as solve
 
 SHAPE = (3, 96, 96)
 
