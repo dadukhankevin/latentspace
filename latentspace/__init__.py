@@ -1,14 +1,15 @@
-"""latentspace -- one evolutionary algorithm for any problem.
+"""latentspace -- one universal genetic algorithm for any problem.
 
-The universal solver (`latentspace.universal.solve`) evolves genomes and
-per-individual decoder weights — never the phenotype — then distills its
-best fitness-vetted solutions into a latent space and exploits it with
-CMA-ES. Change the fitness function, the output shape, and (optionally)
-the decoder architecture; nothing else changes. See FINDINGS.md for the
-seventeen-round benchmark campaign behind this design.
+The solver (`latentspace.universal.solve`) evolves individuals that are
+genes plus latents read by ONE shared decoder network — never the
+phenotype — with speciation across as many fitness functions as you
+provide, and folds discoveries into the decoder over time. Change the
+fitness function(s), the output shape, and (optionally) the decoder
+architecture; nothing else changes. See FINDINGS.md for the benchmark
+campaign behind this design.
 
     from latentspace.universal import solve
-    result = solve(fitness_fn, output_shape=(32, 32), budget=5_000)
+    result = solve(fitness_fn, output_shape=(32, 32), epochs=1_000)
 
 The original co-evolving `Evolver` API below is retained for research use.
 """
@@ -25,10 +26,10 @@ from .training import (AdaptiveMixtureTrainer, AdvantageWeightedTrainer,
                        DistillationTrainer, FrozenTrainer, GuardedTrainer,
                        MixtureTrainer, PermutationTrainer,
                        PolicyGradientTrainer)
-from .universal import SolveResult, solve
+from .universal import GAResult, solve
 
 __all__ = [
-    "solve", "SolveResult",
+    "solve", "GAResult",
     "Individual", "LatentIndividual", "GenePool", "Layer", "Environment",
     "Schedule", "SolutionSnapshot", "make_callable", "Decoder", "MLPDecoder",
     "TrainMode",

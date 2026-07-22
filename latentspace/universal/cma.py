@@ -10,12 +10,16 @@ import numpy as np
 
 
 def cma_minimize(evaluate_batch, dim, budget_evaluations, evaluations_done,
-                 rng, mean0, sigma0, lam=None):
+                 rng, mean0, sigma0, lam=None, stall_window=None,
+                 stall_tol=0.01):
     """Minimize with CMA-ES; returns the number of generations run.
 
     `evaluate_batch(X) -> losses` must record evaluations itself; the loop
     stops exactly at the budget, discarding the final partial generation
-    for distribution updates.
+    for distribution updates. With `stall_window` set, the loop also stops
+    early once the best loss has improved less than `stall_tol` (relative)
+    over that many generations — the same rule the explorer uses, so the
+    two phases can hand the budget back and forth.
     """
     lam = lam if lam is not None else 4 + int(3 * np.log(dim))
     mu = lam // 2
@@ -36,6 +40,7 @@ def cma_minimize(evaluate_batch, dim, budget_evaluations, evaluations_done,
     pc = np.zeros(dim)
     generations = 0
     spent = evaluations_done
+    best_history: list[float] = []
 
     while spent < budget_evaluations:
         covariance = (covariance + covariance.T) / 2
@@ -52,6 +57,15 @@ def cma_minimize(evaluate_batch, dim, budget_evaluations, evaluations_done,
         spent += n_sample
         if n_sample < lam:
             break
+
+        if stall_window is not None:
+            gen_best = float(np.min(losses))
+            best_history.append(min(gen_best, best_history[-1])
+                                if best_history else gen_best)
+            if len(best_history) > stall_window:
+                then = best_history[-stall_window - 1]
+                if then - best_history[-1] < stall_tol * abs(then):
+                    break
 
         order = np.argsort(losses)
         selected = y[order[:mu]]
