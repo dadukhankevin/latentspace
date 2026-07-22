@@ -2809,3 +2809,34 @@ Context for the remaining gap: legacy bars 0.004566 @ 120k and 0.001780
 @ 150k — sparse K=2048/8192 is now within ~1.3x of the round-31 bar,
 from 2.7x behind at round five. Runs: scratchpad sparse_apple.py,
 sparse_capacity.py (stopped early for thermal reasons; partial).
+
+**Round seven, part two — sparse patches on MULTI-FUNCTION: they LOSE,
+and the disagreement localizes what the frozen vocabulary was doing.**
+16 CIFAR images, seed 3, 1400 epochs (~25k evals), live: sparse K=2048
+finished 57.0% mean error removed vs the frozen low-rank default's
+65.6% on the identical configuration — despite LEADING early (10.4% vs
+4.6% at epoch 56) and then being overtaken. Single seed, so the size is
+provisional, but the direction matches the per-individual-vocabulary
+result (also apple-neutral, multi-function-negative), which makes the
+pattern harder to dismiss as noise.
+
+Reading: free placement wins when ONE objective owns the whole decoder
+(apple: 0.0063 vs 0.0122, 3 paired seeds) and costs when SIXTEEN species
+share one backbone. Proposed mechanism, testable: each species folds its
+freely-placed patch into coordinates ITS OWN seed chose, so absorbed
+edits land in disjoint places and overwrite each other's accumulated
+work; the frozen low-rank subspace, precisely by being a SHARED and
+limited vocabulary, forces every species' folds into the same
+coordinates where the Adam accumulator can average them into consensus.
+The subspace was serving as a COORDINATION mechanism, not merely a
+capacity constraint — which is a new fact about the architecture and
+reframes rounds six and seven together.
+
+Designed next arm (small change, separates the two variables for the
+first time): sparse patches with SHARED sites — draw the coordinates
+from one run-level seed instead of per-individual, keeping free
+placement and full reachability while making every species edit the same
+coordinates so folds compose instead of collide. If shared-site sparse
+matches frozen on multi-function AND keeps the apple win, it is the
+default. Run: benchmarks/demo_solve_live.py --directions sparse
+--latents 2048.

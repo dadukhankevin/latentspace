@@ -27,6 +27,11 @@ def main():
     parser.add_argument("--epochs", type=int, default=1400)
     parser.add_argument("--seed", type=int, default=3)
     parser.add_argument("--live-targets", type=int, default=16)
+    parser.add_argument("--directions", default="frozen",
+                        choices=("frozen", "sparse", "individual", "evolve"))
+    parser.add_argument("--latents", type=int, default=64,
+                        help="latent size; with --directions sparse this is "
+                             "the weight-patch size K")
     args = parser.parse_args()
 
     from PIL import Image
@@ -63,7 +68,8 @@ def main():
               f"mean removed {removed:.1f}%", flush=True)
 
     result = solve(fns, output_shape=(32, 32, 3), epochs=args.epochs,
-                   seed=args.seed, progress=progress)
+                   seed=args.seed, directions=args.directions,
+                   latents=args.latents, progress=progress)
     removed = [100 * (1 - (-p.best_fitness) / -p.initial_fitness)
                for p in result.problems if p.best_phenotype is not None]
     print(f"final: mean {np.mean(removed):.1f}%  best {max(removed):.1f}%  "

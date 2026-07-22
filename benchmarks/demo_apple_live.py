@@ -35,6 +35,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--epochs", type=int, default=9_000)
     parser.add_argument("--seed", type=int, default=3)
+    parser.add_argument("--directions", default="frozen",
+                        choices=("frozen", "sparse", "individual", "evolve"))
+    parser.add_argument("--latents", type=int, default=64,
+                        help="latent size; for --directions sparse this is "
+                             "the patch size K (measured best ~2048)")
     args = parser.parse_args()
 
     target = load_apple()
@@ -59,7 +64,8 @@ def main():
               f"mse {-scores[0]:.6f}", flush=True)
 
     result = solve(fitness, output_shape=(96, 96, 3), epochs=args.epochs,
-                   seed=args.seed, progress=progress)
+                   seed=args.seed, directions=args.directions,
+                   latents=args.latents, progress=progress)
     mse = -result.best_fitness
     print(f"final: mse {mse:.6f} in {result.evaluations} evaluations")
     print("legacy bars: 0.004566 @ 120k (round 31), "
