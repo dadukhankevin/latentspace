@@ -2862,3 +2862,32 @@ any latent decoder ever was. The open problem is unchanged and now the
 biggest gap: port the anchor grammar and give solve() a channel for a
 fitness function to hand its decoder the instance data it reads. Run:
 benchmarks/tsp_new_ga.py.
+
+**Round nine — EXPERIMENTAL: tokenized genome + full attention transformer
+(Daniel's BPE fusion, benchmarks/experimental_bpe_transformer.py, touches
+nothing in the library).** The elegant core: BPE learns which adjacent
+genome symbols co-occur enough to be ONE token, so a co-adapted block
+becomes atomic and a plain token cut CANNOT split it — "crossover can't
+break a gene" becomes a property of the representation, not an enforced
+rule. Decoder is a real hand-rolled transformer (multi-head self-attention
+over the genome, then a learned pixel-query grid cross-attending to paint
+the image), LoRA-gated per individual, arithmetic fold, species + shares
+reused from the library. Built, correct, BPE vocab grows, folding works.
+
+First look (4 CIFAR images, 400 epochs, seed 3), TWO sobering results:
+(1) the transformer is a WEAK image decoder — 11.3% error removed where
+the conv-LoRA engine clears ~50% at comparable per-image budget. Round 17
+again: convolution's spatial prior was the biggest image lever ever found,
+and a transformer painting pixels discards it. (A transformer may be the
+RIGHT decoder for grid-less modalities — sequences, sets, graphs — where
+its generality would pay; untested.) (2) BPE token crossover TIED plain
+crossover (11.3 vs 11.1, one seed, within noise) — the building-block
+payoff still absent, the THIRD independent "safe but not a win" for the
+linkage idea across three architectures. Consistent mechanism: within a
+species the population converges, so there is little co-adaptation
+variance for BPE to detect. Caveat: this run carried the LoRA ceiling
+(the one sparse patches broke) and 4 images is underpowered for the
+crossover question. Designed final test before closing the linkage thread:
+sparse-patch modifier + 16 images (diversity and power), then judge
+token-vs-plain. If BPE ties there too, the linkage idea is closed in this
+architecture — a real multi-falsification result, not a gap.
