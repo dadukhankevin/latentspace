@@ -11,3 +11,5 @@ venv/
 
 # Glance memory
 .glance/
+benchmark_results/image_species_vector_32photos_s3_600000.json
+benchmark_results/clip_species_vector_32prompts_s3_600000.json
