@@ -13,3 +13,10 @@ venv/
 .glance/
 benchmark_results/image_species_vector_32photos_s3_600000.json
 benchmark_results/clip_species_vector_32prompts_s3_600000.json
+# Result data stays local — the repo carries code and findings, not
+# gigabytes of JSON (Daniel's ruling, 2026-07-22).
+benchmark_results/*.json
+benchmark_results/*.json.gz
+benchmark_results/*.gif
+benchmark_results/*.png
+benchmark_results/*.npz
