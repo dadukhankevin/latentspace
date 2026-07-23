@@ -2985,3 +2985,32 @@ that lives. Concrete next mechanism the unrelated penalty points to: let a
 warm decoder UN-COMMIT for novel problems (thaw / regularize toward prior /
 partial reset). Caveat: single seed; jitter variants are an artificial
 "related". Run: benchmarks/transfer_test.py seed 3.
+
+**Round twelve — INVERSE CELLULAR AUTOMATON: the framing's flag, planted
+on a problem gradient descent CANNOT run (benchmarks/inverse_ca.py).**
+Forward map: a majority-vote CA (a cell turns on iff >=5 of its 3x3
+neighbourhood are on), K=4 steps. The hard threshold gives the objective
+NO gradient graph at all — attempting to backprop a target-match loss to
+the initial field raises "does not require grad and does not have a
+grad_fn". Gradient descent is not beaten here, it is structurally
+inapplicable (score: undefined, not 0). The method SOLVES it: 97.2% error
+removed on 16 training targets, 90%+ on held-out. This is the framing's
+central claim demonstrated — at the intersection of black-box objective +
+continuous solution manifold, the method is one of the only tools that
+applies.
+
+Transfer (cold vs warm on 8 held-out targets, matched budget): landed in
+the UNRELATED regime, exactly as the framing predicts for a family of
+INDEPENDENT random targets. Warm helps early (0.70x at epoch 64), curves
+cross ~epoch 170, warm ends 63% WORSE (0.074 vs 0.045) — and it PLATEAUS
+hard (frozen at 0.074 while cold descends freely). Two causes: (1) the 16
+targets are independent random blob arrangements, so the family shares
+little solution structure — the unrelated quadrant, and the "head start
+then penalty" shape is the theory calling its own shot; (2) the
+over-commitment + dormant-patch problem, more severe here — the warm
+decoder is locked in its training basin and the sparse-patch reach dial
+(collapsed to 0 again) can't pry it out. Strongest evidence yet that an
+"un-commit" mechanism (thaw / regularize warm decoder toward prior) is a
+real need. Completing experiment (not yet run): a RELATED CA family
+(targets = variants of a shared base), where the framing predicts full
+transfer like the related-image case. Run: benchmarks/inverse_ca.py.

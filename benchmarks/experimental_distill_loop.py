@@ -143,7 +143,7 @@ class Config:
 
 def run(images, out_shape, cfg, seed=0, device="cpu", distill=True, log=None,
         progress=None, progress_every=None, init_state=None,
-        return_full=False):
+        return_full=False, transform=None):
     rng = np.random.default_rng(seed)
     torch.manual_seed(int(rng.integers(0, 2 ** 31)))
     n_fns = len(images)
@@ -157,10 +157,15 @@ def run(images, out_shape, cfg, seed=0, device="cpu", distill=True, log=None,
     trace: list[tuple] = []
 
     def score(phenos, fn_of):
+        # `transform` (optional) is a non-differentiable forward map applied
+        # to the phenotype before comparison — e.g. a cellular automaton. The
+        # objective is a black box; distillation still targets the phenotype
+        # (the CA's INPUT field), never the transform.
+        cmp = transform(phenos) if transform is not None else phenos
         v = np.empty(len(fn_of))
         for f in np.unique(fn_of):
             pk = np.flatnonzero(fn_of == f)
-            v[pk] = (-(phenos[pk] - flats[int(f)]) ** 2).mean(1).cpu().numpy()
+            v[pk] = (-(cmp[pk] - flats[int(f)]) ** 2).mean(1).cpu().numpy()
         return v
 
     cap = 2 * n_fns
