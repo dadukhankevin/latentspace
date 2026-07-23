@@ -2954,3 +2954,34 @@ yet the transfer test. The deeper thesis — a decoder trained on a related
 family makes a FRESH problem solve faster than a cold decoder — is the
 next experiment and the actual reason a universal decoder exists. Runs:
 benchmarks/experimental_distill_loop.py, seeds 3-5.
+
+**Round eleven — THE TRANSFER TEST: the thesis is CONFIRMED, with the
+mechanism laid bare (benchmarks/transfer_test.py).** Warm the shared
+decoder by running the distillation loop on a TRAINING family, then at
+matched budget solve HELD-OUT targets twice: cold (fresh decoder) vs warm
+(trained weights). Metric = absolute best MSE over the budget (NOT
+error-removed-vs-founder, which would hide warm's better starting point).
+
+- RELATED held-out (jitter variants of the trained family): warm beats
+  cold at EVERY checkpoint — 0.071 vs 0.103 early (0.69x), 0.0239 vs
+  0.0298 at convergence (0.80x). BOTH a head start AND a lower floor. The
+  universal decoder earns its keep: knowledge persists in the weights and
+  transfers to unseen related problems.
+- UNRELATED held-out (different CIFAR images): warm HELPS early (0.76x at
+  epoch 14 — Daniel's low-level-statistics claim vindicated: even
+  unrelated images share colour/edge stats for a head start) then HURTS
+  late (curves cross ~epoch 160; warm ends 24% WORSE, 0.0166 vs 0.0134).
+  The warm decoder is over-committed to the training family and a fresh
+  decoder specializes to genuinely-new targets better.
+
+Verdict: training on a related family makes fresh related problems solve
+faster AND better (thesis confirmed); for unrelated problems the shared
+knowledge is a head start that curdles into a handicap once specialization
+matters. Sharpens the record's "head start, not a ceiling change" law:
+related = head start + ceiling; unrelated = head start then penalty. This
+validates the two-day reframe — the project is "a machine that gets better
+at a family as it sees more of it," and the decoder's weights are where
+that lives. Concrete next mechanism the unrelated penalty points to: let a
+warm decoder UN-COMMIT for novel problems (thaw / regularize toward prior /
+partial reset). Caveat: single seed; jitter variants are an artificial
+"related". Run: benchmarks/transfer_test.py seed 3.

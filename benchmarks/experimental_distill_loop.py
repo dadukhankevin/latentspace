@@ -141,13 +141,20 @@ class Config:
     dial_step: float = 1.15
 
 
-def run(images, out_shape, cfg, seed=0, device="cpu", distill=True, log=None):
+def run(images, out_shape, cfg, seed=0, device="cpu", distill=True, log=None,
+        progress=None, progress_every=None, init_state=None,
+        return_full=False):
     rng = np.random.default_rng(seed)
     torch.manual_seed(int(rng.integers(0, 2 ** 31)))
     n_fns = len(images)
     flats = [torch.as_tensor(img.reshape(-1), device=device) for img in images]
     gen = DistillGenerator("auto", cfg.genes, out_shape, cfg.patch, device)
+    if init_state is not None:                     # warm-start (transfer)
+        gen.net.load_state_dict(init_state)
     select = make_species_selection(cfg.outcross)
+    best_pheno = [None] * n_fns
+    prog_every = progress_every or max(1, cfg.epochs // 50)
+    trace: list[tuple] = []
 
     def score(phenos, fn_of):
         v = np.empty(len(fn_of))
@@ -170,10 +177,13 @@ def run(images, out_shape, cfg, seed=0, device="cpu", distill=True, log=None):
         ph = gen.decode(z, patch, seeds)
         v = score(ph, fn_of)
         for f in np.unique(fn_of):
-            vals = v[fn_of == f]
+            picks = np.flatnonzero(fn_of == f)
+            top = int(picks[np.argmax(v[picks])])
             if np.isnan(founder[f]):
-                founder[f] = float(vals.max())
-            best[f] = max(best[f], float(vals.max()))
+                founder[f] = float(v[top])
+            if v[top] > best[f]:
+                best[f] = float(v[top])
+                best_pheno[int(f)] = ph[top].detach().cpu().numpy().copy()
         return (v, ph) if keep_pheno else v
 
     pop_score = evaluate(pop_z, pop_patch, pop_seed, pop_fn)
@@ -217,13 +227,23 @@ def run(images, out_shape, cfg, seed=0, device="cpu", distill=True, log=None):
             pop_patch *= cfg.patch_decay          # discovery now in the base
             pop_score = evaluate(pop_z, pop_patch, pop_seed, pop_fn)
 
+        if (epoch + 1) % prog_every == 0:
+            # absolute mean best MSE (fitness = -MSE), the transfer metric
+            trace.append((epoch + 1, float(np.mean(-best))))
+            if progress:
+                progress(epoch + 1, cfg.epochs,
+                         [None if p is None else p.copy() for p in best_pheno],
+                         best.copy())
         if log and (epoch + 1) % log == 0:
             removed = np.mean([100 * (1 - (-best[f]) / (-founder[f]))
                                for f in range(n_fns)])
             print(f"  epoch {epoch + 1:>5}  mean removed {removed:.1f}%  "
-                  f"patch_dial {patch_dial:.2f}", flush=True)
+                  f"mse {np.mean(-best):.5f}  patch_dial {patch_dial:.2f}",
+                  flush=True)
 
     removed = [100 * (1 - (-best[f]) / (-founder[f])) for f in range(n_fns)]
+    if return_full:
+        return float(np.mean(removed)), removed, gen, trace
     return float(np.mean(removed)), removed
 
 
