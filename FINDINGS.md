@@ -2915,3 +2915,42 @@ transformer (the ceiling-breaking modifier). If that is still weak, the
 tokenized-genome + transformer direction is cleanly closed; if it jumps,
 the weakness was the modifier all along. Runs: experimental file, 4 images
 / grid-less sequences, single seed, 400 epochs (small).
+
+**Round ten — THE DISTILLATION LOOP (Daniel's synthesis after "I can't
+help but think we're doing it wrong"): gradients train the differentiable
+decoder, and it is a large multi-image win.** The reframe: the black-box
+constraint is on the FITNESS, not the decoder — the decoder is a net we
+wrote, fully differentiable. So evolution does the black-box search
+(individuals reach past the current decoder with sparse weight patches,
+fitness vets which patched phenotypes are good), and GRADIENT DESCENT
+distills those vetted phenotypes into the shared decoder (train base(z_i)
+-> patched_phenotype_i, zero fitness evaluations, the fitness never
+differentiated). Patches then decay; individuals repaint from the risen
+floor. Built as benchmarks/experimental_distill_loop.py (touches nothing
+in the library), species + shares imported unchanged.
+
+8 CIFAR images, 1200 epochs, distill vs the same loop with distillation
+OFF (sparse patch + arithmetic fold, the current library approach), 3
+paired seeds: distill 74.3/64.9/78.5 vs no-distill 52.3/56.1/61.1 —
++22.0/+8.9/+17.4, mean +16.1, all 3 positive, t = 4.19 (just under the
+strict n=3 bar of 4.303; more seeds would formally confirm). The
+mechanism shows where the synthesis predicted: the STRUGGLERS rise —
+no-distill leaves its worst targets at 26-34%, distillation lifts the
+same-rank targets to 51-54%. The rising shared baseline lifts the whole
+population.
+
+This is the strongest evidence of the "we're doing it wrong" thread and
+it shifts the thesis: EVOLUTION for the black-box search + GRADIENTS for
+the differentiable decoder, the two stopping fighting over the same job.
+It is essentially round 3j's training-fold (deferred as "not needed yet"
+— it was needed) reunited with sparse patches (the reach-beyond
+mechanism). Honest caveats: (1) not perfectly evaluation-matched — the
+distill arm spends ~2-4% more phenotype evals on post-distill rescores
+(far too few to explain +16); (2) the patch step dial collapsed to ~0 in
+BOTH arms after early epochs, so late-run gains are flat — the loop may
+leave much on the table if patches go dormant instead of continuously
+re-reaching; (3) this is CO-RESIDENCE (solving 8 together better), NOT
+yet the transfer test. The deeper thesis — a decoder trained on a related
+family makes a FRESH problem solve faster than a cold decoder — is the
+next experiment and the actual reason a universal decoder exists. Runs:
+benchmarks/experimental_distill_loop.py, seeds 3-5.
