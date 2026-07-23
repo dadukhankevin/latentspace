@@ -87,7 +87,7 @@ def main():
 
     print(f"WARMING decoder on 16 inverse-CA targets "
           f"({args.train_epochs} epochs)...", flush=True)
-    _, _, gen, _ = run(train, shape, Config(epochs=args.train_epochs),
+    _, _, gen, _, _ = run(train, shape, Config(epochs=args.train_epochs),
                        seed=args.seed, device=device, transform=transform,
                        return_full=True, log=max(1, args.train_epochs // 4))
     warm_state = {k: v.clone() for k, v in gen.net.state_dict().items()}
@@ -95,7 +95,7 @@ def main():
     print("\n=== held-out inverse-CA: cold vs warm ===", flush=True)
     traces = {}
     for arm, init in (("cold", None), ("warm", warm_state)):
-        _, _, _, trace = run(held, shape, Config(epochs=args.test_epochs),
+        _, _, _, trace, _ = run(held, shape, Config(epochs=args.test_epochs),
                              seed=args.seed + 1, device=device,
                              init_state=init, transform=transform,
                              return_full=True)

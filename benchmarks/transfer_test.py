@@ -68,7 +68,7 @@ def main():
     print(f"WARMING decoder on {len(train)} training variants "
           f"({args.train_epochs} epochs)...", flush=True)
     cfg_train = Config(epochs=args.train_epochs)
-    _, _, gen, _ = run(train, shape, cfg_train, seed=args.seed, device=device,
+    _, _, gen, _, _ = run(train, shape, cfg_train, seed=args.seed, device=device,
                        return_full=True, log=max(1, args.train_epochs // 4))
     warm_state = {k: v.clone() for k, v in gen.net.state_dict().items()}
 
@@ -80,7 +80,7 @@ def main():
         print(f"\n=== held-out: {label} ===", flush=True)
         traces = {}
         for arm, init in (("cold", None), ("warm", warm_state)):
-            _, _, _, trace = run(held, shape, cfg_test, seed=args.seed + 1,
+            _, _, _, trace, _ = run(held, shape, cfg_test, seed=args.seed + 1,
                                  device=device, init_state=init,
                                  return_full=True)
             traces[arm] = dict(trace)

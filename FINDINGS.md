@@ -3014,3 +3014,20 @@ decoder is locked in its training basin and the sparse-patch reach dial
 real need. Completing experiment (not yet run): a RELATED CA family
 (targets = variants of a shared base), where the framing predicts full
 transfer like the related-image case. Run: benchmarks/inverse_ca.py.
+
+**Round thirteen — DESIGN THE PAST (the demo,
+benchmarks/demo_design_the_past.py).** Type a word; the system shows the
+seed fields it evolved — scattered static — then runs the thresholded CA
+forward and the static blooms into the word. One warm phase learned the
+full alphabet as 26 species through the gradient-free automaton (64x64
+grid, vote>=4, K=4, blurred-match fitness for search signal, binary
+display): mean match 94.4%, worst letter C at 86.6%, bank saved to
+demo/design_the_past.pt. Any word composes instantly from the bank;
+--live-solve solves a never-seen symbol with the warm decoder as the
+transfer finale. Feasibility trail: vote>=5 made ring letters IMPOSSIBLE
+(O at 0.0%), vote>=4 rescued them (73% at 32x32 probe), the 64x64 grid
+was the legibility lever (A: 85% in 150 epochs vs 500 at 32x32). Every
+claim in the demo's pitch is a measured result: no gradient graph exists
+through the CA (round 12), the prior is gradient-trained on evolution's
+vetted seeds (round 10), and the alphabet is a genuinely related family
+(round 11's transfer condition).

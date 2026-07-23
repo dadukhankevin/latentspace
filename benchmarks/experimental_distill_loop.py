@@ -248,7 +248,7 @@ def run(images, out_shape, cfg, seed=0, device="cpu", distill=True, log=None,
 
     removed = [100 * (1 - (-best[f]) / (-founder[f])) for f in range(n_fns)]
     if return_full:
-        return float(np.mean(removed)), removed, gen, trace
+        return float(np.mean(removed)), removed, gen, trace, best_pheno
     return float(np.mean(removed)), removed
 
 
