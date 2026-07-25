@@ -225,7 +225,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
           founding="per_function", progress=None, progress_every=None,
-          seed=None) -> GAResult:
+          init_decoder=None, seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.
 
     fitness_fns: one callable or a list. Each takes a torch tensor
@@ -289,6 +289,11 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     if directions == "individual":
         from .conditional import attach_seeded_directions
         attach_seeded_directions(decoder)
+    if init_decoder is not None:
+        # Warm start: the shared decoder begins as a previous run's, so a
+        # new problem inherits the family's structure instead of starting
+        # from a random prior. `GAResult.decoder` is the vector to pass in.
+        decoder.set_params(init_decoder)
 
     selection = selection or make_species_selection()
     gene_mutation = gene_mutation or make_gaussian_mutation()

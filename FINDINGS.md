@@ -3090,3 +3090,54 @@ physics verified reproducible from `best_phenotype`, and three seeds found
 three visibly different strategies — a bounding hop, a flat glide, a short
 hop (demo/evolved_gaits.png). NOT yet a demo: 28 all-pairs springs render
 as a hairball, and it needs a sparse body plan plus a live animation.
+
+
+**Round fifteen — CROSS THE GROUND: the demo works, its finale does not
+(2026-07-25, benchmarks/demo_cross_the_ground.py).** You pick a landscape;
+the system evolves a body plan and a gait from nothing and you watch
+flailing become locomotion. Fitness is only "how far did you get". This
+answers round thirteen's structural flaw — there the user typed the answer,
+so the output could not surprise and the difficulty was invisible; here the
+user gives a GOAL and gets back an artifact nobody can predict.
+
+Built on the round-fourteen fix: the decoder comes in through
+`architecture=` (dead until that round) with its output scale widened,
+because a near-constant phenotype is a body whose nodes share one point.
+`solve()` gained `init_decoder=` — `GAResult.decoder` already handed the
+trained vector out and every decoder already had `set_params`; only the way
+back in was missing. Body PLAN is evolved too: 28 candidate springs, a hard
+top-12 gate keeps the ones the creature gets, and nothing survives that
+threshold as a gradient. Each terrain is a species, so one `solve()` call,
+one population, one decoder.
+
+*Population 32 was starving it.* The stock cap froze the search inside ~100
+epochs — best distance identical to 6 decimals for hundreds of epochs
+after — so each run was decided by a lucky early draw and results scattered
+(rubble across seeds: 4.35 / 4.32 / 5.67 / 2.77). At cap 96 / 48 children
+it neither freezes nor scatters: two seeds landed on +6.108 and +6.114,
+~40% further. Sparse patches were comparable (+6.29 / +5.48). Worth testing
+whether the default of 32 is starving other rugged problems too.
+
+*The finale is falsified.* The demo was designed to end on held-out
+transfer, and it does not happen. Paired by landscape AND evolution seed,
+6 held-out rubble landscapes each run twice at matched budget:
+  - trained on flat/hills/stairs/ramp (the UNRELATED quadrant): warm 3/6,
+    mean cold 5.899 vs warm 6.126 (+3.8%) — a tie.
+  - trained on rubble, held out DIFFERENT rubble (the RELATED quadrant,
+    where images and the CA family both transferred): warm 2/6, mean cold
+    5.429 vs warm 4.798 (-11.6%) — if anything worse.
+The obvious mechanism is ruled out: warm founders are as diverse as cold
+ones (phenotype spread 0.2687 vs 0.2723) and score slightly worse (best
++1.33 vs +1.68), so this is not warm-start collapsing the diversity the
+problem was just shown to be starved of. The shared decoder simply learns
+nothing about locomotion that a new terrain wants. This is a real boundary
+on the framing: images transfer at the pixel level and CA seeds transfer
+within a related family, but "a good creature for terrain A" carries no
+usable prior for terrain B. The demo ships making no transfer claim, and
+`--transfer` is kept so the negative can be re-run.
+
+What is real and demonstrable: a goal in and an unpredictable artifact out;
+a simulator with hard contact tests and friction clamps where no gradient
+path exists; body plan, muscle amplitudes and phase all evolved; and
+visibly different strategies from different seeds (a bounding hop, a flat
+glide, a short hop). demo/cross_the_ground.png, demo/evolved_gaits.png.
