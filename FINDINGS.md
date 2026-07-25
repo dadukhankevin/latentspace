@@ -3031,3 +3031,62 @@ claim in the demo's pitch is a measured result: no gradient graph exists
 through the CA (round 12), the prior is gradient-trained on evolution's
 vetted seeds (round 10), and the alphabet is a genuinely related family
 (round 11's transfer condition).
+
+**Round fourteen — THE ARCHITECTURE HOOK WAS DEAD, AND PHENOTYPE SPREAD IS
+PROBLEM-DEPENDENT (2026-07-25, benchmarks/probe_walker.py).** Chasing a
+better demo than round thirteen turned into two library findings.
+
+*The bug.* `build_conditional_decoder` dropped its `architecture` argument
+for every output shape with 2+ dimensions and hardcoded `ConditionalLoRAConv`.
+So `solve(..., architecture=...)` was a SILENT no-op on all image-shaped
+problems — the exact case the README demonstrates — and an unknown
+architecture name did not even raise. Verified by instrumenting a custom
+builder and watching its call count stay at zero while `solve` happily
+returned. No recorded result rode on it: every image benchmark that passes
+an architecture (round27/38/46/47, demo_target_image, demo_clip_evolve)
+drives the LEGACY engines, which resolve their own, and the falsified
+transformer image decoder never called `solve()` at all. Fixed so an
+explicit architecture wins at any shape while `"auto"` keeps the proven
+conv path bit-for-bit.
+
+*The finding.* Every decoder is born emitting a NEAR-CONSTANT phenotype —
+range 0.43..0.57, spread across individuals 0.004-0.012 — so the founding
+population is essentially N copies of one thing. Whether that is a defect
+depends entirely on what the numbers MEAN, and the two cases point opposite
+ways:
+  - IMAGES: narrow is RIGHT. Apple, 3 paired seeds, 1500 epochs, arms
+    differing only in the final conv's init scale: stock 0.011756/0.013432/
+    0.015789 vs x8 0.018256/0.014244/0.020101 — widening loses 3/3 (x4
+    loses 2/3). A flat grey start is a good prior; refinement does the rest.
+  - GEOMETRY: narrow is CATASTROPHIC. When the phenotype's meaning lives in
+    the SPREAD of its values (node coordinates), a constant output is a
+    degenerate body — 8 nodes 0.027 units apart, a dot. A dot cannot walk
+    whatever its gait, and the landscape around it is flat, so evolution
+    has nothing to select on: it froze at +0.021 body-lengths for 1350
+    epochs. Widening the final layer x10 took the same call to +3.995.
+    Fitness variance across founders scales directly with output scale
+    (sd 0.017 at x1 -> 0.862 at x40); past ~x20 the sigmoid saturates and
+    it turns back down.
+So this is not a constant to retune globally but a knob that must be
+reachable per problem — which is precisely what the dead architecture hook
+was supposed to provide. The two findings are one finding.
+
+*Also.* `architecture="auto"` sends any 1-D output of length >=32 to
+`conv1d`, imposing smoothness along the vector INDEX. For a heterogeneous
+parameter vector ([positions | amplitudes | phases]) adjacency is
+meaningless and the prior is actively harmful: +0.021 (conv1d) vs +0.795
+(plain MLP) at matched scale and budget, ~38x. Left unchanged pending
+evidence across other 1-D problems (the TSP rounds would move); flagged
+because `auto` silently assumes a signal-like vector.
+
+*The demo question.* Round thirteen's demo has a structural flaw: the user
+TYPES THE ANSWER, so the output carries no surprise and the difficulty is
+invisible without narration. Locomotion inverts that — you give a goal, it
+returns an artifact nobody can predict — and it sits on all three framing
+conditions (hard ground contact and friction clamps: no gradient path; a
+continuous body/gait manifold; every terrain a fresh instance of a family).
+Probe result: evolution +3.99 vs matched random-decoder best +1.74 (2.3x),
+physics verified reproducible from `best_phenotype`, and three seeds found
+three visibly different strategies — a bounding hop, a flat glide, a short
+hop (demo/evolved_gaits.png). NOT yet a demo: 28 all-pairs springs render
+as a hairball, and it needs a sparse body plan plus a live animation.

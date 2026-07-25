@@ -411,8 +411,16 @@ def build_conditional_decoder(architecture, latent, output_shape,
     """Pick the proven conv conditional-LoRA decoder for image-shaped outputs
     (2-D+); fall back to the generic per-layer LoRA wrapper for vector outputs.
     Both are ONE shared decoder conditioned per-individual by (z, coefficients).
+
+    An explicitly named or supplied `architecture` always wins, at any output
+    shape. Before 2026-07-25 this function dropped the argument for every 2-D+
+    shape, so `solve(..., architecture=...)` was a silent no-op on exactly the
+    image problems the README demonstrates it on — an unknown name did not
+    even raise. No recorded finding rode on it (every image benchmark that
+    passes an architecture drives the legacy engines, which resolve their
+    own), but the documented extension point did nothing.
     """
-    if len(output_shape) >= 2:
+    if architecture == "auto" and len(output_shape) >= 2:
         return ConditionalLoRAConv(latent, output_shape, coefficient_dim,
                                    device)
     return ConditionalLoRADecoder(architecture, latent, output_shape,
