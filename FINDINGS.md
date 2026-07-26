@@ -3141,3 +3141,60 @@ a simulator with hard contact tests and friction clamps where no gradient
 path exists; body plan, muscle amplitudes and phase all evolved; and
 visibly different strategies from different seeds (a bounding hop, a flat
 glide, a short hop). demo/cross_the_ground.png, demo/evolved_gaits.png.
+
+
+**Round sixteen — GYM CONTROL: the decoder is the asset, the search is the
+liability (2026-07-26, benchmarks/gym_control.py).** Pointed at standard
+Gymnasium control tasks with the phenotype AS a policy network's weight
+vector, so the shared decoder becomes a network that writes networks.
+Fitness is episode return over fixed seeds (deterministic — a noisy
+objective silently breaks selection), and every claim is checked on 100
+episode seeds nobody optimized against. Three arms at matched evaluations:
+the library, a (mu/mu, lambda) Gaussian ES straight on the weights, and
+uniform random weight vectors.
+
+*Classic control does not discriminate.* CartPole-v1: random search hits a
+perfect 500/500 and so does ES, while the library got 108 held-out.
+Acrobot-v1: all three arms clear the solved bar and land together (-94.7 /
+-83.1 / -92.6). Both are needle-hunts or trivially easy; neither separates
+methods, and CartPole in particular is a bad benchmark to ever cite.
+
+*The sparse-reward task separates them, and the verdict is against the
+search.* MountainCarContinuous-v0, held-out return, 3 seeds:
+    library   58.5 / -0.0 / -0.0      all-or-nothing
+    ES        -0.0 / -0.0 / -0.0      never finds the reward at all
+    random    32.8 / 25.8 / 47.8      reliable, but overfits its seeds
+Then the decisive control — random sampling from the SAME DECODER at the
+same budget: 34.1 / 71.3 / 91.5 held-out. It beats the full GA on 2 of 3
+seeds, catastrophically, and seed 5's 91.5 essentially SOLVES the task
+(bar 90) where raw random weights managed 47.8 and ES managed zero.
+
+Two things follow, and they point in opposite directions.
+  1. THE DECODER PRIOR IS REAL AND VALUABLE. Sampling it blindly solves a
+     sparse-reward control problem that direct weight search and a
+     respectable ES both fail. The structured manifold is doing genuine
+     work — this is the strongest standalone evidence for the decoder yet,
+     and it arrived with no evolution involved at all.
+  2. THE EVOLUTIONARY SEARCH ON TOP IS ACTIVELY HARMFUL HERE. It converts
+     a prior that would have found 91.5 into 0.0. The mechanism is
+     premature commitment: `solve()` founds TWO random individuals per
+     function and every later individual is their descendant, so on a
+     plateau landscape with no gradient to climb, the lineage never
+     recovers and the self-tuning dials shrink toward nothing. The same
+     signature appeared on CartPole, where the GA (108) lost to random
+     draws from its own decoder (500 within 400 samples), and as the
+     round-fifteen freeze that a bigger population partly masked.
+
+The indicated fix is the exploration mechanism the library has never had:
+random immigrants / restarts — keep injecting FRESH founders rather than
+only descendants, which is precisely the thing random sampling does and
+this GA does not. FINDINGS already carries "event-driven recolonization on
+extinction" as designed-but-unbuilt; this is the evidence it is needed, and
+it is a new mechanism in the spec, so it wants Daniel's sign-off first.
+
+Setup note: gymnasium will not install into the Homebrew Python (PEP 668,
+and pip itself trips the libexpat mismatch). Installed isolated:
+`DYLD_LIBRARY_PATH=/opt/homebrew/opt/expat/lib python3 -m pip install
+--target ~/.local/gymlibs --break-system-packages gymnasium`, with its
+bundled numpy deleted so the system numpy is not shadowed. Run with
+`PYTHONPATH=~/.local/gymlibs`.
