@@ -3198,3 +3198,46 @@ and pip itself trips the libexpat mismatch). Installed isolated:
 --target ~/.local/gymlibs --break-system-packages gymnasium`, with its
 bundled numpy deleted so the system numpy is not shadowed. Run with
 `PYTHONPATH=~/.local/gymlibs`.
+
+
+**Round sixteen, CORRECTED (2026-07-26).** Round sixteen's headline claim
+— "random sampling from the decoder beats the full GA, the evolutionary
+search is actively harmful" — was drawn from THREE seeds on a task whose
+outcome is bimodal (you find the goal and score 60-95, or you score
+exactly 0). That is the same error the mate-selection closure made, on the
+same kind of distribution, and the correct statistic is a SUCCESS RATE.
+Ten seeds, 500 draws per arm, MountainCarContinuous-v0, held-out return on
+100 unseen episode seeds, success = return > 50:
+
+    raw weight vectors        2/10   mean 41.1
+    random (untrained) decoder 6/10  mean 51.5
+    REFINED decoder            2/10  mean 40.2
+    the GA itself              5/10  mean 44.9
+
+RETRACTED: "the search is actively harmful." The GA (5/10, 44.9) and random
+sampling from the same decoder (6/10, 51.5) are indistinguishable at ten
+seeds — one success apart, means well inside a per-seed spread of 0 to 91.
+The 2-of-3 rout was noise.
+
+WHAT SURVIVES:
+  - Sampling policy weights THROUGH A RANDOM NETWORK beats sampling them
+    uniformly: both decoder-based arms (6/10, 5/10) against raw weights
+    (2/10). This is the architecture's prior at random initialization, not
+    anything this campaign learned, and it is the only robust effect here.
+  - REFINEMENT DOES NOT HELP and may hurt: the refined decoder samples at
+    2/10 against the random decoder's 6/10. Fisher two-tailed p ~ 0.17, so
+    suggestive rather than established, but it is the opposite of the
+    intended direction and deserves a proper run.
+  - The GA's failure mode is genuinely bimodal: exactly 0.0 on 3 of 10
+    seeds, versus one near-zero for random sampling. It wins bigger when it
+    wins (90.9, 80.8, 75.3) and collapses completely when it loses.
+  - Daniel's dial hypothesis, measured: the dials DO collapse (gene 1.15 ->
+    0.020 over 50 epochs, latent 1.15 -> 0.107). But flooring them at 1.0
+    makes things worse, not better — seeds 4 and 5 stay at 0.0 and seed 3
+    falls from 58.5 to 0.0. Low mutation is a symptom of a plateau with
+    nothing to select on, not the cause of failure.
+  - Classic control does not discriminate: random search scores a perfect
+    500 on CartPole-v1, and every arm clears the bar on Acrobot-v1.
+
+Standing lesson, twice learned now: on a bimodal or detonating outcome,
+three seeds cannot separate arms. Measure the rate.
