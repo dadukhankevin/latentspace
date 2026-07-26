@@ -3241,3 +3241,34 @@ WHAT SURVIVES:
 
 Standing lesson, twice learned now: on a bimodal or detonating outcome,
 three seeds cannot separate arms. Measure the rate.
+
+
+**Round seventeen — DOES THE SEARCH EARN ITS KEEP? The gym control, run on
+images (2026-07-26).** Daniel's question after the round-sixteen retraction:
+does the gym result erase the image and TSP wins? Run the same control that
+tied on MountainCarContinuous — the GA against random draws from the SAME
+decoder at matched evaluations — on the apple photo, 5 seeds:
+
+    GA        0.0154 / 0.0140 / 0.0288 / 0.0192 / 0.0173   mean 0.0189
+    random    0.1535 / 0.1583 / 0.1543 / 0.1508 / 0.1478   mean 0.1529
+    the search is worth 8.1x, 5/5 seeds.
+
+So the gym finding is DOMAIN-SPECIFIC, not a verdict on the method. On
+images random sampling yields a blurry blob and evolution yields the apple.
+
+The boundary this draws is a FOURTH condition the framing did not have.
+It was: black-box objective, continuous manifold, related family. Add:
+DENSE FITNESS FEEDBACK. MountainCarContinuous pays 0 until the goal is
+reached and ~60-95 after, so there is no gradient of improvement for
+selection to climb and evolution degenerates toward sampling — exactly what
+the tie measured. Image MSE moves for every pixel that gets closer, so
+every child is informative. Sparse-reward RL is not this method's
+territory, and that is now measured rather than assumed.
+
+Standing honest caveat, unchanged (round 48): where gradients DO exist they
+beat this method by ~350x (Adam converges to 0.000011 on our own decoder in
+1.6s versus evolution's 0.003-0.018). The method's whole case rests on the
+gradient-free niche — the inverse CA (round 12), where backprop raises
+RuntimeError and this solves 97% train / 90% held-out, is the flagship.
+What the image wins establish is that the SEARCH works when fed dense
+feedback, not that it competes with gradients where gradients run.
