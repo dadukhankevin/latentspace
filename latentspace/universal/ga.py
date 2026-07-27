@@ -224,7 +224,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           fold_lr=0.5, directions="frozen", direction_every=16,
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
-          founding="per_function", founders=2,
+          founding="per_function", founders=16,
           progress=None, progress_every=None,
           init_decoder=None, seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.

@@ -3402,3 +3402,20 @@ Implementation note: this does NOT fit the existing pluggable hooks.
 `gene_crossover` receives two parents; an EDA needs the whole population, so
 it requires a population-level reproduction hook — a genuine addition to the
 redesign spec, and therefore Daniel's call.
+
+
+**Default change (2026-07-27, Daniel's call): `founders=16`.** Measured
+support: MountainCarContinuous 5/10 -> 10/10 (mean 44.9 -> 81.7) at a 0.6%
+budget increase, gains saturating by 16; apple paired seeds neutral-to-
+better (16 founders -13% MSE, 2/3 seeds; 64 founders +0.3%, a wash). Every
+benchmark recorded before this date used two founders and will not
+reproduce exactly against the new default — pass `founders=2` to reproduce
+the old numbers.
+
+CAVEAT for multi-function runs: founders are PER FUNCTION, and the
+population cap is raised to hold them all. Eight functions now found 128
+individuals and force a cap of at least 128 (634 evaluations vs 516 at 30
+epochs); the 26-letter alphabet demo would found 416. That is not only a
+one-time founding cost — a larger forced cap changes survival dynamics for
+the whole run. Multi-function callers that want the old behaviour should
+set `founders=2` explicitly, and the right per-function number is unmeasured.
