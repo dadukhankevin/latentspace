@@ -3365,3 +3365,40 @@ Still owed before any default changes: the apple/TSP paired-seed check
 that more founders costs nothing where the founding draw matters less than
 the climb (images beat random sampling 8.1x, so their binding constraint is
 elsewhere and the budget spent founding is budget not spent climbing).
+
+
+## Filed for later (2026-07-27)
+
+**Distribution-sampling reproduction (Daniel's idea, deferred by Daniel).**
+Instead of producing children by one-point crossover plus Gaussian noise on
+a specific parent, fit a distribution to the successful GENES and sample
+children from it — an estimation-of-distribution operator, of which CMA-ES's
+covariance adaptation is the well-known instance.
+
+Why it might pay, stated precisely so a future session tests the right
+thing: `founders=N` (round nineteen) fixed COVERAGE — the population now
+starts from many points instead of two. It did nothing for the other half:
+reproduction still learns nothing about which gene COMBINATIONS work,
+because crossover cuts at a point and mutation is isotropic noise. A fitted
+covariance is exactly that missing information, and a sampled child can land
+where no parent is.
+
+Why it is not obviously worth it: the disease it was proposed to cure —
+children being local perturbations of two lineages — was cured by founders
+for a 0.6% budget increase, so this must now beat crossover+mutation WITH
+founders already fixed, which is a much higher bar. The record also carries
+two warnings: CMA-ES loses to the plain tour GA at every city count with
+covariance unlearnable past ~100 dims (round 33), and GA/CMA exploit
+failures correlated at 0.967, meaning CMA was not contributing independent
+information (the exploit ablation).
+
+Standing constraint: [[cma-is-a-baseline-not-a-component]] — Daniel's
+ruling is that CMA-ES is an opponent, never a component, precisely because
+of the temptation to lean on it. Testing an EDA-style REPRODUCTION OPERATOR
+is not the same as reinstating a CMA stack, but the distinction has to be
+kept deliberately.
+
+Implementation note: this does NOT fit the existing pluggable hooks.
+`gene_crossover` receives two parents; an EDA needs the whole population, so
+it requires a population-level reproduction hook — a genuine addition to the
+redesign spec, and therefore Daniel's call.
