@@ -3548,3 +3548,42 @@ reduction (2.6x at n=12 -> 2.05x at n=30, held). The three that evaporated
 were rank-weighted folding (3/3 -> tie at 21), Dogfight's 160/160 (a
 determinism artifact), and "random search beats the GA" (3 seeds on a
 bimodal outcome).
+
+
+**Round twenty-two — DOGFIGHT RERUN with the session's fixes (2026-07-27).**
+Re-ran with `founders=16`, sign-vote folding, randomized spawns, and the
+actual fix for round eighteen's overfitting: 8 spawn seeds per opponent
+instead of 3, so each individual faces 32 scenarios rather than 12.
+
+Training score fell from +1.350 to +0.294 — as predicted, because the old
+number was largely a pilot memorising twelve fixed scenarios. The two are
+not comparable; only held-out is.
+
+Held-out, 40 UNSEEN spawn seeds per opponent, v1 -> v2:
+    chaser      4W/32D/4L (+0.03)  ->  1W/34D/5L (-0.12)
+    dogfighter  1W/33D/6L (-0.15)  ->  1W/38D/1L (+0.00)
+    ace         2W/33D/5L (-0.05)  ->  3W/36D/1L (+0.05)
+    brawler     3W/28D/9L (-0.17)  ->  0W/35D/5L (-0.15)
+    totals      10W/126D/24L       ->  5W/143D/12L
+
+So generalization DID improve and the diagnosis was right: losses halved
+(24 -> 12) and two of four opponents moved to a non-negative HP
+differential. But wins halved too. The pilot learned to SURVIVE, not to
+win — it draws 143 of 160 matches.
+
+That is the fitness function's fault, not the search's. Scoring on HP
+differential plus a hits bonus makes "never get hit" a strong strategy: a
+draw scores 0 while a loss scores negative, so across 32 varied scenarios
+the safest high-average policy is to disengage. A rerun aiming at wins
+needs elimination weighted explicitly above survival.
+
+THE SEARCH RESULT IS THE GOOD NEWS: against a budget-matched 7,000 random
+draws through the same decoder, evolution scored +0.294 vs +0.038 — a 7.7x
+advantage, UP from 4.8x on the easier objective. The dense-feedback
+prediction holds and strengthens on the harder, better-sampled objective;
+this problem is firmly in the images bucket, not MountainCar's.
+
+Standing caveat unchanged: nothing has been submitted to the leaderboard,
+so there is still no comparison to any other method. The only external
+yardstick available is the four hand-coded scripted opponents, and we do
+not beat them.

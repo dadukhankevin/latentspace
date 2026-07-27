@@ -188,7 +188,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--epochs", type=int, default=120)
     parser.add_argument("--opponents", default="chaser")
-    parser.add_argument("--seeds", type=int, default=3)
+    parser.add_argument("--seeds", type=int, default=8,
+                        help="spawn seeds per opponent. The first probe used "
+                             "3, giving 12 scenarios per individual, and the "
+                             "pilot memorised them: training +1.350 against "
+                             "held-out -0.09. This is the binding constraint "
+                             "here, and it costs linearly.")
     parser.add_argument("--seed", type=int, default=3)
     parser.add_argument("--baseline", type=int, default=0,
                         help="also spend this many random draws as a control")
