@@ -224,7 +224,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           fold_lr=0.5, directions="frozen", direction_every=16,
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
-          founding="per_function", progress=None, progress_every=None,
+          founding="per_function", founders=2,
+          progress=None, progress_every=None,
           init_decoder=None, seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.
 
@@ -343,17 +344,26 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     # "per_function": two founders on every function from the start — the
     # comparison arm for whether seeding every niche beats growing into
     # them.
+    # `founders` sets how many of them per function (Daniel, 2026-07-26).
+    # Two was the spec's number and it is a real limit, not a detail: every
+    # individual that ever exists is descended from that pair, so the run's
+    # entire coverage of the space is fixed at founding. Raising the
+    # population cap does NOT fix this — it keeps a wider cloud of the same
+    # two lineages' descendants. Where the score gives no gradient to climb
+    # (MountainCarContinuous pays 0 until the goal), fresh draws are the only
+    # thing that finds anything, which is why blind sampling matched the GA
+    # there (FINDINGS sixteen, corrected).
+    n_founders = max(2, int(founders))
     if founding == "per_function":
-        population_cap = max(population_cap, 2 * n_fns)
-        n0 = 2 * n_fns
-        pop_genes = rng.standard_normal((n0, genes)).astype(np.float32)
-        pop_latents = rng.standard_normal((n0, latents)).astype(np.float32)
-        pop_fn = np.repeat(np.arange(n_fns), 2)
+        population_cap = max(population_cap, n_founders * n_fns)
+        n0 = n_founders * n_fns
+        pop_fn = np.repeat(np.arange(n_fns), n_founders)
     else:
-        n0 = 2
-        pop_genes = rng.standard_normal((2, genes)).astype(np.float32)
-        pop_latents = rng.standard_normal((2, latents)).astype(np.float32)
-        pop_fn = np.zeros(2, dtype=np.int64)
+        population_cap = max(population_cap, n_founders)
+        n0 = n_founders
+        pop_fn = np.zeros(n0, dtype=np.int64)
+    pop_genes = rng.standard_normal((n0, genes)).astype(np.float32)
+    pop_latents = rng.standard_normal((n0, latents)).astype(np.float32)
     seeded = directions in ("individual", "sparse")
     pop_basis = (rng.integers(0, 2 ** 31, n0) if seeded
                  else np.zeros(n0, dtype=np.int64))

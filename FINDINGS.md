@@ -3325,3 +3325,43 @@ out to be an artifact came from a measurement that failed to vary something
 it should have — 3 seeds on a bimodal outcome, a decoder argument that was
 silently dropped, and a seed that changed nothing. Check that the varying
 thing varies.
+
+
+**Round nineteen — TWO FOUNDERS WAS THE BINDING CONSTRAINT (2026-07-26,
+Daniel's proposal).** Every individual that ever exists descends from the
+founding set, so a run's entire coverage of the space is fixed at founding.
+`solve()` founded exactly TWO per fitness function. Raising
+`population_cap` does not fix this — it keeps a wider cloud of the same two
+lineages' descendants — and the measurement says so:
+
+    MountainCarContinuous, 10 seeds, matched budget, success = held-out > 50
+      population  32     3/10   mean 24.4
+      population  96     5/10   mean 44.9
+      population 384     4/10   mean 39.5     <- plateaus, then worsens
+      random sampling    6/10   mean 62.4     <- still beats every cap
+
+Adding `founders=N` (default 2, verified bit-identical to the old
+behaviour) and sweeping it at matched budget:
+
+      founders   2       5/10   mean 44.9   (2498 evals)
+      founders  16      10/10   mean 81.7   (2512 evals)
+      founders  64      10/10   mean 84.5   (2560 evals)
+      founders 256      10/10   mean 84.4   (2912 evals)
+
+Ten out of ten on every setting from 16 up, at a 0.6% budget increase, and
+several seeds clear the task's "solved" bar of 90. This does not merely
+close the gap to random sampling — it BEATS it decisively (10/10 and 81.7
+against 6/10 and 62.4), so the GA is now the best arm on the problem where
+it previously tied.
+
+This retires the round-sixteen worry outright. "The evolutionary search is
+actively harmful on plateau landscapes" was never about selection or about
+mutation dials collapsing (flooring those made things worse). It was one
+number: the founding count. Selection was fine; it was being handed a
+population drawn from two points. The gains saturate by 16, so this is a
+cheap fix, not a budget trade.
+
+Still owed before any default changes: the apple/TSP paired-seed check
+that more founders costs nothing where the founding draw matters less than
+the climb (images beat random sampling 8.1x, so their binding constraint is
+elsewhere and the budget spent founding is budget not spent climbing).
