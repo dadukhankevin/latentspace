@@ -221,6 +221,46 @@ def largest_niche_champion_fold_selection(weights, fn_idx):
 # lineage of near-clones, and with sixteen there are independent lineages,
 # so the mean cancels noise instead of re-averaging the same individual.
 
+def sign_vote_fold_selection(weights, fn_idx, latents):
+    """Coordinate-wise weighted MAJORITY VOTE on direction (Daniel, 2026-07-27).
+
+    A mean is dominated by whichever individuals happen to carry large
+    latents, and it cancels when magnitudes disagree even if directions do
+    not. A sign vote throws magnitude away on purpose: every individual gets
+    one share-weighted vote per coordinate for "up" or "down", and the step
+    takes the majority direction at a magnitude set by what the population
+    actually uses there. This is the signSGD/majority-vote estimator, and it
+    is robust exactly where the mean is fragile."""
+    share = weights / (weights.sum() + 1e-12)
+    vote = (share[:, None] * np.sign(latents)).sum(axis=0)
+    scale = (share[:, None] * np.abs(latents)).sum(axis=0)
+    return "step", (np.sign(vote) * scale).astype(np.float64)
+
+
+def natural_gradient_fold_selection(weights, fn_idx, latents):
+    """A gradient ESTIMATE in latent space rather than an average position.
+
+    The fold has always absorbed a position — one individual's whole
+    bending. Round 50's law was about something different: deltas signed by
+    the fitness change they caused. The analogue here is the NES estimator —
+    weight each individual's DEVIATION FROM THE POPULATION MEAN by its
+    centered rank, so latents that did better than average pull the decoder
+    toward themselves and those that did worse push it away."""
+    step = np.zeros(latents.shape[1], dtype=np.float64)
+    for f in np.unique(fn_idx):
+        members = np.flatnonzero(fn_idx == f)
+        if len(members) < 2:
+            continue
+        block = latents[members].astype(np.float64)
+        adv = np.argsort(np.argsort(weights[members])).astype(np.float64)
+        adv = adv / (len(members) - 1.0) - 0.5
+        step += (adv[:, None] * (block - block.mean(axis=0))).sum(axis=0)
+    norm = np.linalg.norm(step)
+    if norm > 0:
+        step *= np.linalg.norm(latents, axis=1).mean() / norm
+    return "step", step
+
+
 def rank_weighted_fold_selection(weights, fn_idx):
     """Rank-weighted mean of the largest niche's latents. Ranks rather than
     raw fitness because the record has been burned twice by fitness scale
@@ -544,7 +584,19 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             if fold_due:
                 next_fold *= 2
         if fold_due:
-            chosen = fold_selection(fitness_shares(pop_score, pop_fn), pop_fn)
+            import inspect as _inspect
+            _shares = fitness_shares(pop_score, pop_fn)
+            if len(_inspect.signature(fold_selection).parameters) >= 3:
+                chosen = fold_selection(_shares, pop_fn, pop_latents)
+            else:
+                chosen = fold_selection(_shares, pop_fn)
+            # A rule may hand back a finished step ("step", vector) when the
+            # combination it wants is not a linear weighting of individuals
+            # — a sign vote is not expressible as one.
+            direct_step = None
+            if isinstance(chosen, tuple) and chosen[0] == "step":
+                direct_step = np.asarray(chosen[1], dtype=np.float64)
+                chosen = int(np.argmax(_shares))
             # A rule may return one index (absorb that individual's latents,
             # correct that individual) or a weight vector over the whole
             # population (absorb the weighted mean). The mean has no single
@@ -556,7 +608,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             # individual its own weight coordinates, so a population mean is
             # not expressible as one absorb and those arms keep the
             # single-donor rule.
-            averaged = not np.isscalar(chosen) and np.ndim(chosen) == 1
+            averaged = (direct_step is None and not np.isscalar(chosen)
+                        and np.ndim(chosen) == 1)
             if fold_correction == "donor":
                 correct_all = False
             elif fold_correction == "all":
@@ -580,6 +633,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             else:
                 donor = int(chosen)
                 g = pop_latents[donor].astype(np.float64)
+            if direct_step is not None:
+                g = direct_step
             if fold_optimizer == "adam":
                 adam_t += 1
                 adam_m = 0.9 * adam_m + 0.1 * g

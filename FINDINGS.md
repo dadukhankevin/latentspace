@@ -3497,3 +3497,54 @@ correcting EVERY individual after a fold — which preserves all phenotypes
 exactly, and looked like free elegance — costs the unchanged champion rule
 15%, because removing the consensus from everyone shrinks the population's
 bendings toward each other and that variety is load bearing.
+
+
+**Round twenty-one — THE SIGN VOTE IS A VARIANCE REDUCER (2026-07-27,
+Daniel's idea).** Daniel: "what if we took all the latents and combined
+them somehow or took their sign... we're deleting most of the information."
+The first half had already been tested and tied (round twenty). The sign is
+a different estimator and it is the one that pays.
+
+Also implemented and tested: a NES-style estimator weighting each
+individual's DEVIATION FROM THE POPULATION MEAN by centered rank — the
+honest translation of round 50's law (deltas signed by fitness change, not
+average positions) up to the fold. It is the WEAKEST of the three
+(-3.6%, 5/12, t=0.75). Prediction logged before running was that this would
+win and the sign vote would tie; both were wrong.
+
+30 paired seeds, 8 co-resident species, mean MSE across species:
+
+                 mean       median      sd         worst
+    champion     0.020056   0.017978    0.007361   0.054363
+    sign-vote    0.018978   0.018134    0.003584   0.029816
+    sign-vote wins 16/30, paired t = 1.21 (not significant)
+
+The MEAN and MEDIAN are ties — 16/30 is exactly chance. What is not a tie
+is the SPREAD: the champion rule's standard deviation is 2.05x the sign
+vote's (F = 4.22 on 29/29 df; treat the p-value cautiously since the F-test
+assumes normality and these distributions are deliberately heavy-tailed,
+but a 2x spread reduction that HELD from 12 seeds to 30 is not noise). Worst
+run 0.054 vs 0.030. Champion has 3/30 runs above 1.5x its own median; on
+those the sign vote is 23% better, and on the other 27 the two are within
+1.3% (0.018108 vs 0.017879 — the "2% median cost" seen at 12 seeds
+disappeared with more data).
+
+Mechanism, and why the mean could not do this: the champion rule stakes the
+shared decoder on ONE individual's entire bending, so an unrepresentative
+champion poisons the decoder and the whole run pays. A weighted mean is no
+defence — it is dominated by whoever carries the largest latents, which is
+often that same outlier. A coordinate-wise majority vote structurally
+cannot be dragged by one individual: fifteen disagreeing outvote it. The
+sign vote does not extract more signal, it refuses to follow a bad leader.
+
+RECOMMENDATION (not taken unilaterally — defaults change the comparability
+of every recorded benchmark): make `sign_vote_fold_selection` the default.
+It costs nothing in expectation and halves run-to-run risk, which is the
+right trade for a library where one detonated run wastes an experiment.
+
+Session note: of five effects that looked promising at small n, only two
+survived extension — `founders` (5/10 -> 10/10, held) and this variance
+reduction (2.6x at n=12 -> 2.05x at n=30, held). The three that evaporated
+were rank-weighted folding (3/3 -> tie at 21), Dogfight's 160/160 (a
+determinism artifact), and "random search beats the GA" (3 seeds on a
+bimodal outcome).
