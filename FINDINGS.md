@@ -3460,3 +3460,40 @@ damp dimensions species disagree on), is untested. (2) A mean of diverse
 vectors is shorter than its members, so `fold_lr` is likely mistuned for an
 averaged step and no learning-rate sweep was run. The multi-function arm is
 the one worth running next.
+
+
+**Round twenty, part two — THE FOLD AVERAGING IS A TIE, TESTED WHERE IT
+SHOULD HELP (2026-07-27).** Part one's apple test was single-function, so
+"largest niche champion" was just "best individual" and averaging could
+only cancel noise. Re-run on EIGHT co-resident species (distinct CIFAR
+images, one shared decoder), which is the case Daniel's objection was
+about: the champion rule lets one species donate while the other seven
+contribute nothing, and the Adam accumulator exists precisely to hold
+cross-species consensus.
+
+First pass, 3 paired seeds, looked promising: rank-weighted won 3/3, and
+`centered-rank` lost (+17.6%), as did both arms at double `fold_lr` — so
+the step-magnitude confound was checked and is not the explanation.
+
+At 21 paired seeds it is a TIE:
+    champion       0.020745
+    rank-weighted  0.019862   (-4.3%), wins 14/21, paired t = 1.14
+                              (threshold ~2.09 at n=21 — not significant)
+
+The one live hypothesis, that averaging protects against a catastrophic
+champion pick, is FALSIFIED by its own measurement: detonations (>2x the
+pooled median) are 1 for champion and 1 for rank-weighted. Excluding both,
+the arms are 0.8% apart (0.019065 vs 0.018915). The -4.3% headline is one
+seed where the champion rule blew up, and averaging blew up on a seed too.
+
+Verdict: Daniel's critique is reasonable and the mechanism is real, but on
+this benchmark absorbing one champion loses nothing measurable against
+absorbing a rank-weighted mean of its whole species. Defaults unchanged
+(`champion` + donor correction). `rank_weighted_fold_selection` and
+`centered_rank_fold_selection` stay as research arms.
+
+The genuinely useful finding of this round remains part one's accident:
+correcting EVERY individual after a fold — which preserves all phenotypes
+exactly, and looked like free elegance — costs the unchanged champion rule
+15%, because removing the consensus from everyone shrinks the population's
+bendings toward each other and that variety is load bearing.
