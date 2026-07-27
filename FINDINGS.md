@@ -3419,3 +3419,44 @@ epochs); the 26-letter alphabet demo would found 416. That is not only a
 one-time founding cost — a larger forced cap changes survival dynamics for
 the whole run. Multi-function callers that want the old behaviour should
 set `founders=2` explicitly, and the right per-function number is unmeasured.
+
+
+**Round twenty — THE FOLD RULE: averaging ties, and the elegant part was
+the harmful part (2026-07-27, Daniel's critique).** Daniel's objection to
+`largest_niche_champion_fold_selection`: absorbing ONE champion's latents
+is a sample of one and winners-only, when round 45 found averaging beat
+picking for decoder inheritance and round 50 found pooling every child's
+noise INCLUDING FAILURES was the campaign's strongest result. Added two
+rules — rank-weighted mean of the largest niche, and centered ranks over
+the whole population so poor latents push the decoder away from themselves.
+
+Building it forced a second change: a weighted mean has no single donor to
+correct afterwards, and because the latent->weight composition is linear,
+subtracting the step from EVERY individual preserves every phenotype
+exactly. That looked like a free improvement. It is not. Apple, 5 paired
+seeds, 1500 epochs, mean MSE:
+
+                        donor correction    correct everyone
+    champion                0.018204  <-        0.020972
+    rank-weighted           0.018830            0.025228
+    centered-rank           0.021676            0.019474
+
+Attribution: rank-weighted's headline +38.6% loss is mostly NOT the
+averaging. Against the same correction rule it is +3.4% — a tie inside this
+benchmark's spread. The damage came from correcting everyone, which costs
+the unchanged champion rule 15% by itself. Mechanism: removing the
+consensus component from every individual every fold shrinks the
+population's bendings toward each other, and that variety is load bearing.
+Exact phenotype preservation was the wrong thing to optimize for. `auto`
+now means donor.
+
+So Daniel's idea is NOT falsified — it is a tie on this benchmark — and the
+thing that looked like free elegance was the regression. Two reasons the
+test is also weak evidence about the idea itself: (1) the apple is
+SINGLE-function, so "largest niche champion" is just "best individual" and
+averaging can only cancel noise; the cross-species case, which is the whole
+motivation (the Adam accumulator exists to keep cross-species consensus and
+damp dimensions species disagree on), is untested. (2) A mean of diverse
+vectors is shorter than its members, so `fold_lr` is likely mistuned for an
+averaged step and no learning-rate sweep was run. The multi-function arm is
+the one worth running next.

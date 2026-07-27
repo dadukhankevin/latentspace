@@ -210,6 +210,48 @@ def largest_niche_champion_fold_selection(weights, fn_idx):
     return int(members[np.argmax(weights[members])])
 
 
+# Fold rules may instead return a WEIGHT VECTOR over the population, in
+# which case the fold absorbs the weighted mean of everyone's latents.
+# Motivation (Daniel, 2026-07-27): the champion rule is a sample of ONE and
+# winners-only, which is what round 49 diagnosed and round 50 overturned —
+# pooling every child's noise SIGNED BY ITS FITNESS CHANGE, failures
+# included, was the campaign's strongest result. Round 45 separately found
+# averaging beat picking for decoder inheritance. Averaging should also pay
+# MORE now than when last tested: with two founders the population was one
+# lineage of near-clones, and with sixteen there are independent lineages,
+# so the mean cancels noise instead of re-averaging the same individual.
+
+def rank_weighted_fold_selection(weights, fn_idx):
+    """Rank-weighted mean of the largest niche's latents. Ranks rather than
+    raw fitness because the record has been burned twice by fitness scale
+    and ties (rounds 32, 41)."""
+    fns, counts = np.unique(fn_idx, return_counts=True)
+    f = fns[np.argmax(counts)]
+    members = np.flatnonzero(fn_idx == f)
+    out = np.zeros(len(weights))
+    order = np.argsort(np.argsort(weights[members]))     # 0 = worst
+    out[members] = order + 1.0
+    return out / out.sum()
+
+
+def centered_rank_fold_selection(weights, fn_idx):
+    """Centered ranks over the WHOLE population, so poor latents push the
+    decoder away from themselves instead of being discarded. Round 50's law
+    ("failures are gradient samples; pool them") applied to the fold.
+    Per-species centering keeps a species' internal ranking meaningful
+    without letting a large species dominate by count alone."""
+    out = np.zeros(len(weights))
+    for f in np.unique(fn_idx):
+        members = np.flatnonzero(fn_idx == f)
+        if len(members) < 2:
+            continue
+        order = np.argsort(np.argsort(weights[members])).astype(np.float64)
+        order = order / (len(members) - 1.0) - 0.5        # -0.5 .. +0.5
+        out[members] = order
+    scale = np.abs(out).sum()
+    return out / scale if scale > 0 else out
+
+
 # --------------------------------------------------------------- the loop
 
 def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
@@ -221,7 +263,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           speciation=None,
           fold_selection=largest_niche_champion_fold_selection,
           fold="on", fold_every=32, fold_optimizer="adam",
-          fold_lr=0.5, directions="frozen", direction_every=16,
+          fold_lr=0.5, fold_correction="auto",
+          directions="frozen", direction_every=16,
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
           founding="per_function", founders=16,
@@ -501,8 +544,42 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             if fold_due:
                 next_fold *= 2
         if fold_due:
-            donor = fold_selection(fitness_shares(pop_score, pop_fn), pop_fn)
-            g = pop_latents[donor].astype(np.float64)
+            chosen = fold_selection(fitness_shares(pop_score, pop_fn), pop_fn)
+            # A rule may return one index (absorb that individual's latents,
+            # correct that individual) or a weight vector over the whole
+            # population (absorb the weighted mean). The mean has no single
+            # donor to correct, but the latent->weight composition is
+            # LINEAR, so subtracting the absorbed step from EVERY individual
+            # preserves every phenotype exactly: decoder+P@s applied to
+            # latents-s equals decoder applied to latents. Only available in
+            # a shared basis; seeded bases (sparse/individual) give each
+            # individual its own weight coordinates, so a population mean is
+            # not expressible as one absorb and those arms keep the
+            # single-donor rule.
+            averaged = not np.isscalar(chosen) and np.ndim(chosen) == 1
+            if fold_correction == "donor":
+                correct_all = False
+            elif fold_correction == "all":
+                correct_all = True
+            else:
+                # "auto" = donor. Correcting EVERY individual preserves all
+                # phenotypes exactly (linear composition), which is elegant
+                # and measurably worse: apple, 5 paired seeds, it costs the
+                # champion rule 15% (0.018204 -> 0.020972). Removing the
+                # consensus from everyone shrinks the population's bendings
+                # toward each other every fold, and that variety is load
+                # bearing. Exactness is not the objective.
+                correct_all = False
+            if averaged and seeded:
+                chosen = int(np.argmax(np.asarray(chosen)))
+                averaged = False
+            if averaged:
+                w = np.asarray(chosen, dtype=np.float64)
+                g = (w[:, None] * pop_latents.astype(np.float64)).sum(axis=0)
+                donor = int(np.argmax(w))
+            else:
+                donor = int(chosen)
+                g = pop_latents[donor].astype(np.float64)
             if fold_optimizer == "adam":
                 adam_t += 1
                 adam_m = 0.9 * adam_m + 0.1 * g
@@ -517,7 +594,10 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                 decoder.absorb_seeded(step, int(pop_basis[donor]))
             else:
                 decoder.absorb(step)
-            pop_latents[donor] -= step
+            if correct_all:
+                pop_latents -= step          # every phenotype preserved
+            else:
+                pop_latents[donor] -= step
             pop_score = score(pop_genes, pop_latents, pop_fn,
                               pop_basis if seeded else None)
 
