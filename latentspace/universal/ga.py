@@ -301,7 +301,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           latent_inheritance=coin_flip_latent_inheritance,
           gene_mutation=None, latent_mutation=None,
           speciation=None,
-          fold_selection=largest_niche_champion_fold_selection,
+          fold_selection=sign_vote_fold_selection,
           fold="on", fold_every=32, fold_optimizer="adam",
           fold_lr=0.5, fold_correction="auto",
           directions="frozen", direction_every=16,
@@ -595,8 +595,14 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             # — a sign vote is not expressible as one.
             direct_step = None
             if isinstance(chosen, tuple) and chosen[0] == "step":
-                direct_step = np.asarray(chosen[1], dtype=np.float64)
-                chosen = int(np.argmax(_shares))
+                # A combined step mixes individuals, so under a SEEDED basis
+                # (sparse/individual) its coordinates refer to different
+                # weights per individual and it cannot be absorbed as one
+                # patch. Those arms fall back to the champion rule.
+                if not seeded:
+                    direct_step = np.asarray(chosen[1], dtype=np.float64)
+                chosen = (largest_niche_champion_fold_selection(_shares, pop_fn)
+                          if seeded else int(np.argmax(_shares)))
             # A rule may return one index (absorb that individual's latents,
             # correct that individual) or a weight vector over the whole
             # population (absorb the weighted mean). The mean has no single
