@@ -3272,3 +3272,56 @@ gradient-free niche — the inverse CA (round 12), where backprop raises
 RuntimeError and this solves 97% train / 90% held-out, is the flagship.
 What the image wins establish is that the SEARCH works when fed dense
 feedback, not that it competes with gradients where gradients run.
+
+
+**Round eighteen — DOGFIGHT: feasibility yes, generalization no (2026-07-26,
+benchmarks/dogfight_evolve.py).** Feasibility probe against an OUTSIDE
+benchmark for once: Paradigm's Dogfight challenge wants a stateless ONNX
+network (224 floats in, 3 out, 250k parameter cap) flying a 2D fighter,
+ranked by Elo against other entrants. The simulator is public Rust and runs
+locally, so evaluations are free.
+
+*Feasibility: clear yes.* Sim builds in 24s. A match with our network in the
+loop costs 17ms. Our torch pilot (14,595 weights) exports to their format
+and passes `validate`. The decisive engineering detail: re-exporting from
+torch per individual takes 3.8s and would have killed the idea outright,
+while rewriting the weight tensors of a pre-exported template takes 0.11ms
+— 34,000x, and the difference between runnable and not. End to end ~12ms
+per individual at 4 parallel matches; 10,178 evaluations in 12 minutes.
+
+*The determinism trap, and a retracted headline.* Their `run` is
+deterministic unless given `--randomize`: 40 matches at 40 different seeds
+came back byte-identical (HP differential sd 0.00). The first probe
+therefore optimized ONE fixed starting position per opponent. It went
+160/160 against all four built-in opponents — and collapsed to 7W/30D/3L
+against the WEAKEST of them and 1W/31D/8L against the strongest once spawns
+varied. That result and its control comparison (+2.275 vs +1.825) are void:
+both arms were overfitting a single scenario. Caught before it was claimed,
+by checking that the thing assumed random actually moved.
+
+*Corrected run — the search works, the solution does not generalize.*
+Randomized spawns, fixed seed set (deterministic per individual), 4
+opponents x 3 seeds:
+    evolution        +1.350   |   9,000 random draws, same decoder  +0.283
+So the search is worth ~4.8x over matched random sampling on the objective
+it was given — evolution is doing real work here, unlike sparse-reward gym.
+But on 40 UNSEEN spawn seeds per opponent the pilot is break-even to losing:
+    chaser 4W/32D/4L (+0.03)      dogfighter 1W/33D/6L (-0.15)
+    ace    2W/33D/5L (-0.05)      brawler    3W/28D/9L (-0.17)
+Training +1.350 against held-out ~-0.09 is textbook overfitting: twelve
+matches (4 opponents x 3 spawns) do not define "a good pilot", so evolution
+memorized twelve scenarios. Mostly DRAWS, meaning it learned to survive
+rather than to win.
+
+The indicated fix is more evaluation samples per individual — 10+ spawn
+seeds per opponent, costing linearly (~28 min for 10k evaluations) — and it
+should be run before any conclusion about indirect encoding at scale, which
+was the point of coming here. Also unmeasured: the control model's held-out
+record, so "evolution generalizes worse than random sampling" is NOT ruled
+out.
+
+Session-wide pattern, three for three: every promising number that turned
+out to be an artifact came from a measurement that failed to vary something
+it should have — 3 seeds on a bimodal outcome, a decoder argument that was
+silently dropped, and a seed that changed nothing. Check that the varying
+thing varies.
