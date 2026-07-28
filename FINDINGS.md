@@ -3587,3 +3587,65 @@ Standing caveat unchanged: nothing has been submitted to the leaderboard,
 so there is still no comparison to any other method. The only external
 yardstick available is the four hand-coded scripted opponents, and we do
 not beat them.
+
+
+**Round twenty-three — THE WEAKNESS LIST PUT TO THE TEST (2026-07-27).**
+Daniel's directive: test the top items, solidify what works, no thesis
+drift. Three mechanisms, ten paired seeds each.
+
+*1. The fold ablation (fold="on" vs "off" at current defaults).* The
+library's signature mechanism, isolated for the first time since the
+redesign. Apple: fold-on 0.018378 vs fold-off 0.021307 — on wins 6/10,
+t=1.40, directionally positive (off detonated once: 0.036), NOT
+significant. Eight species: 0.019161 vs 0.019446, 4/10, t=0.50 — a dead
+tie, and the multi-function case is where a shared-decoder fold should
+shine. VERDICT: at 1500-epoch budgets the fold does not measurably earn
+its keep; its one established property remains the sign-vote variance
+halving (round twenty-one), which is about HOW to fold, not whether.
+Kept on as default (no evidence of harm, some directional benefit, and the
+long-budget regime where the legacy record showed folds compounding is
+untested here). The honest status is: central mechanism, unproven at
+current operating points, needs a long-budget ablation before the thesis
+leans on it.
+
+*2. Round-50 mutation memory, ported (mutation_memory="shared").* The
+legacy engine's strongest result (image 1.38x, t=3.88; first sub-0.002
+apple) faithfully ported: every child's birth delta signed by its fitness
+change, failures included, Adam accumulator per space, drift on later
+mutations. On the apple through the NEW library: 0.018438 vs 0.018378 —
+5/10, t=-0.04, a dead tie. The mechanism does not transfer as ported.
+Plausible reasons, untested: the legacy memory ran over 7,500 PRIVATE
+WEIGHTS with unmasked full-vector noise, where the new spaces are 64-dim,
+mutations are 10%-masked, and the win-rate dials already adapt step size —
+there may be nothing left for the memory to add at this dimensionality.
+Shipped default OFF as a research arm; the param is the invitation to test
+it where mutation dimensionality is high (sparse patches at K=2048 is the
+designed follow-up).
+
+*3. Stall immigrants (immigrants="stall").* Fresh random draws after epoch
+zero: stalled functions receive one immigrant per epoch, extinct functions
+are re-founded. MountainCarContinuous, 10 seeds, patience 8:
+    founders 2                 6/10  mean 46.8
+    founders 2  + immigrants   6/10  mean 50.9
+    founders 16                9/10  mean 78.2
+    founders 16 + immigrants   9/10  mean 76.9
+VERDICT: nothing, in both directions — immigration neither rescues thin
+founding nor adds to adequate founding. The immigrant count tells the
+story: ~10-20 extra evaluations per run, because a 50-epoch run rarely
+stalls for 8 consecutive epochs. Coverage at FOUNDING is what matters on
+this problem; trickle-in arrives too slowly to matter at these budgets.
+Shipped default OFF; the extinction-recolonization half remains useful in
+principle for many-function runs (unmeasured).
+
+*Bookkeeping note.* founders=16 scored 9/10 (78.2) here where round
+nineteen scored 10/10 (81.7) on the same seeds — the delta is the
+sign-vote default landing in between (seed 4: 79.2 -> 46.7). One flipped
+seed at k=10 is inside noise; recorded so nobody reads the two tables as
+contradictory.
+
+Session verdict on the weakness list: founders and sign-vote survive as
+defaults; the fold's contribution is now honestly labeled UNPROVEN at
+short budgets; round-50 memory and immigrants are in the library as
+off-default arms with the conditions under which they might pay documented.
+No thesis drift: one decoder, genes/latents distinct, CMA still an
+opponent.
