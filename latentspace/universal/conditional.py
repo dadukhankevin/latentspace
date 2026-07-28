@@ -105,6 +105,12 @@ class ConditionalLoRADecoder:
         self._set_coeff(None)
         return out.reshape(len(z), -1)
 
+    def training_logits(self, z: torch.Tensor) -> torch.Tensor:
+        """Pre-sigmoid output of the BASE decoder (no per-individual
+        bending), with gradients — the distillation target surface."""
+        self._set_coeff(None)
+        return self.net(z)
+
     def get_params(self) -> np.ndarray:
         return nn.utils.parameters_to_vector(
             self.net.parameters()).detach().cpu().numpy().astype(np.float32)
@@ -282,6 +288,13 @@ class ConditionalLoRAConv:
         with torch.no_grad():
             out = torch.sigmoid(self._run(zt, ct))
         return out.reshape(len(z), -1)
+
+    def training_logits(self, z: torch.Tensor) -> torch.Tensor:
+        """Pre-sigmoid BASE output (zero bending), with gradients — the
+        distillation target surface: the base learns to reach unaided what
+        a champion's bending reached."""
+        zeros = torch.zeros(len(z), self.coefficient_dim, device=self.device)
+        return self._run(z, zeros)
 
     def get_params(self) -> np.ndarray:
         return nn.utils.parameters_to_vector(

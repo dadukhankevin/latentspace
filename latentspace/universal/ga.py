@@ -318,6 +318,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
           mutation_memory="off", memory_drift=0.5,
+          distill="off", distill_steps=40,
           founding="per_function", founders=16,
           immigrants="off", immigrant_patience=32,
           progress=None, progress_every=None,
@@ -387,6 +388,18 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         50's mechanism (the legacy engine's strongest result: image 1.38x
         at t=3.88, the first sub-0.002 apple) ported to the redesign.
         "off" disables it.
+    distill: "on" adds GRADIENT DISTILLATION at every fold event (Daniel,
+        2026-07-27: the fold's arithmetic path measured unproven while the
+        gradient path carried every decoder-learning win — "maybe we need a
+        combo of both"). After the arithmetic absorb, the decoder's BASE
+        weights (never the shared direction vocabulary — training that
+        would re-define every individual's latents mid-run) take
+        `distill_steps` Adam steps toward a replay buffer of each
+        function's best-ever (genes -> phenotype) pair. The fitness
+        function is never differentiated — the black-box constraint is on
+        fitness only. Costs ZERO fitness evaluations (targets are already
+        scored) and shares the fold's re-score. Unavailable under seeded
+        bases.
     immigrants: "stall" keeps founding-style fresh random draws flowing
         AFTER epoch zero: a function whose best-ever has not improved in
         `immigrant_patience` epochs receives one fresh random individual
@@ -446,6 +459,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     best_score = np.full(n_fns, -np.inf)
     founder_score = np.full(n_fns, np.nan)
     best_pheno: list[np.ndarray | None] = [None] * n_fns
+    best_genes: list[np.ndarray | None] = [None] * n_fns
     fn_evals = np.zeros(n_fns, dtype=np.int64)
     spent = 0
 
@@ -471,6 +485,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                 best_score[f] = float(v[top])
                 best_pheno[int(f)] = (phenos[picks[top]]
                                       .detach().cpu().numpy().copy())
+                best_genes[int(f)] = genes_arr[picks[top]].copy()
         spent += len(fn_of)
         return values
 
@@ -529,6 +544,9 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                     steps + 1, df_scale]
 
     next_fold = 32
+    replay_z: list[np.ndarray] = []
+    replay_p: list[np.ndarray] = []
+    distill_opt: list = [None]
     adam_m = np.zeros(latents, dtype=np.float64)
     adam_v = np.zeros(latents, dtype=np.float64)
     adam_t = 0
@@ -777,6 +795,28 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                 pop_latents -= step          # every phenotype preserved
             else:
                 pop_latents[donor] -= step
+            if distill == "on" and not seeded \
+                    and hasattr(decoder, "training_logits"):
+                for f in range(n_fns):
+                    if best_pheno[f] is not None:
+                        replay_z.append(best_genes[f].copy())
+                        replay_p.append(best_pheno[f].reshape(-1).copy())
+                del replay_z[:-256], replay_p[:-256]
+                net = decoder.net
+                if distill_opt[0] is None:
+                    trainable = [q for name, q in net.named_parameters()
+                                 if "down" not in name and "up" not in name]
+                    distill_opt[0] = torch.optim.Adam(trainable, lr=1e-3)
+                Z = torch.as_tensor(np.stack(replay_z), device=decoder.device)
+                P = torch.as_tensor(np.stack(replay_p), device=decoder.device)
+                for _ in range(int(distill_steps)):
+                    idx = torch.randint(0, len(Z), (min(64, len(Z)),),
+                                        device=decoder.device)
+                    distill_opt[0].zero_grad()
+                    out = torch.sigmoid(
+                        decoder.training_logits(Z[idx])).reshape(len(idx), -1)
+                    ((out - P[idx]) ** 2).mean().backward()
+                    distill_opt[0].step()
             pop_score = score(pop_genes, pop_latents, pop_fn,
                               pop_basis if seeded else None)
 

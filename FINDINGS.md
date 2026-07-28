@@ -3649,3 +3649,34 @@ short budgets; round-50 memory and immigrants are in the library as
 off-default arms with the conditions under which they might pay documented.
 No thesis drift: one decoder, genes/latents distinct, CMA still an
 opponent.
+
+
+**Round twenty-four — THE COMBO, BUILT AND FALSIFIED AS BUILT
+(2026-07-27, Daniel: "maybe we need a combo of both").** Added
+`distill="on"` to solve(): at every fold event, after the sign-vote
+arithmetic absorb, the decoder's BASE weights (never the shared direction
+vocabulary) take 40 Adam steps toward a replay buffer of each function's
+best-ever (genes -> phenotype) pair. Zero fitness evaluations; shares the
+fold's re-score; the fitness function is never differentiated.
+
+10 paired seeds, both families:
+    apple      fold-only 0.018378   combo 0.021575   combo wins 2/10, t=-2.05
+    8 species  fold-only 0.019161   combo 0.022386   combo wins 5/10, t=-1.09
+The combo is WORSE — borderline-significantly on the apple, and it
+re-created the detonating tail on the species run (seed 12: 0.058) that
+the sign vote had just eliminated. Falsified as built.
+
+Why this differs from the +16pt distillation loop, precisely: the
+experimental loop's per-individual modifier is a SPARSE WEIGHT PATCH — it
+lives in the same coordinate system as the base, so "base absorbs what the
+patch achieved, patch decays" is coherent. The library's conditional
+decoder uses MIXED conditioning: half of each individual's coefficient
+vector is extra decoder INPUT, not weight modification. A champion's
+phenotype is half made of information the base structurally cannot absorb
+by training toward base(genes, zero-bending) — the target asks the base to
+hallucinate missing inputs, and the resulting drift degrades everyone.
+The gradient path's measured wins (+16pt, transfer, the demo) all sit on
+the sparse-patch substrate; the combo belongs there, not on the LoRA-gate
+path. `distill="on"` stays as a documented-falsified research arm; the
+designed follow-up is distillation under `directions="sparse"`, which is
+exactly where the experimental loop already proved it.
