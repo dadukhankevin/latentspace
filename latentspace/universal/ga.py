@@ -305,7 +305,7 @@ def centered_rank_fold_selection(weights, fn_idx):
 # --------------------------------------------------------------- the loop
 
 def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
-          genes=64, latents=64, children=16, population_cap=32,
+          genes=64, latents=None, children=16, population_cap=32,
           device="auto", selection=None,
           gene_crossover=one_point_gene_crossover,
           latent_inheritance=coin_flip_latent_inheritance,
@@ -314,7 +314,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           fold_selection=sign_vote_fold_selection,
           fold="on", fold_every=32, fold_optimizer="adam",
           fold_lr=0.5, fold_correction="auto",
-          directions="frozen", direction_every=16,
+          directions="sparse-shared", direction_every=16,
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
           mutation_memory="off", memory_drift=0.5,
@@ -331,8 +331,20 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         breeds `children` children. Evaluation counts (one per scoring) are
         tracked and reported for honest cross-method comparison.
     genes / latents: sizes of the two spaces. Genes are the decoder's
-        input; latents bend the shared decoder per individual.
-    directions: "frozen" (default). "sparse" replaces low-rank bending
+        input; latents bend the shared decoder per individual. `latents`
+        means PATCH SIZE K on the sparse paths and gate count on the
+        low-rank paths, so its default resolves per substrate (2048 /
+        64, the measured-best of each).
+    directions: "sparse-shared" (DEFAULT since 2026-07-27, by round
+        seven's pre-registered rule: keeps the apple win — 0.0113 vs
+        frozen 0.0177, 3/3 paired seeds — and matches frozen on
+        multi-function, 10 paired seeds, t=-0.32): each individual's
+        latents are values added at K weight coordinates drawn ONCE per
+        run, so every species edits the same coordinates and folds
+        compose; the shared coordinate system is also what lets the
+        sign-vote fold operate here. "frozen" (the prior default,
+        low-rank gating) reproduces all benchmarks recorded before
+        2026-07-27. "sparse" replaces low-rank bending
         with a per-individual SPARSE WEIGHT PATCH (Daniel, 2026-07-22):
         the individual's seed picks `latents` coordinates of the decoder's
         weight vector and its latents are the values added there, so folds
@@ -423,6 +435,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     if not fns:
         raise ValueError("at least one fitness function is required")
     n_fns = len(fns)
+    if latents is None:
+        latents = 2048 if directions in ("sparse", "sparse-shared") else 64
     output_shape = tuple(int(s) for s in output_shape)
     if device == "auto":
         device = "mps" if torch.backends.mps.is_available() else "cpu"

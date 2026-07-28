@@ -75,19 +75,23 @@ always exactly one decoder and only the form of the small per-individual
 modifier changes:
 
 ```python
+solve(fitness, output_shape=(96, 96, 3), epochs=9_000)
+# default: directions="sparse-shared" — direct sparse weight patches
 solve(fitness, output_shape=(96, 96, 3), epochs=9_000,
-      directions="sparse", latents=2048)   # sparse weight patches
+      directions="frozen")               # prior default, low-rank gating
 ```
 
-`"frozen"` (default) gates a fixed set of random low-rank directions —
-cheap, but every individual and every fold is confined to that subspace
-forever. `"sparse"` instead gives each individual K freely-placed weight
-coordinates (its seed picks them, its latents are the values added
-there), so folds can reach any weight. Measured on the apple photo at
-matched budget, three paired seeds: sparse at K=2048 beat frozen on all
-three, mean MSE 0.0076 vs 0.0133. It is not yet the default — the
-control runs separating "more evolvable numbers" from "free placement"
-are single-seed so far, and the multi-function check is unrun.
+`"sparse-shared"` (default) is direct weight mutation: each individual's
+latents are values added at K weight coordinates drawn ONCE per run, so
+every species edits the same coordinates and folds compose instead of
+colliding — the shared coordinate system is also what lets the sign-vote
+fold operate on this path. It became the default by a rule pre-registered
+before the deciding runs: keep the apple win (0.0113 vs frozen 0.0177,
+all 3 paired seeds) AND match frozen on multi-function (10 paired seeds,
+t=-0.32, a tie). `"frozen"` gates a fixed set of random low-rank
+directions and reproduces every benchmark recorded before 2026-07-27;
+`"sparse"` (per-individual coordinates) wins single-function but its
+species' folds collide on multi-function.
 
 **The evidence** (paired seeds, identical evaluation counts; the full
 falsification-heavy campaign is in [FINDINGS.md](FINDINGS.md)): this

@@ -3745,3 +3745,25 @@ arms sit within ~3-6% of frozen instead of collapsing (harness differs:
 "matches" is not yet established either: shared is 5.6% worse on mean,
 1/3 seeds. n=3 cannot call a 5.6% gap; the 10-seed paired confirmation
 decides the default per the rule.
+
+
+**Round twenty-five, resolution — THE RULE TRIGGERS: sparse-shared is the
+default (2026-07-27).** The 10-seed multi-function confirmation: frozen
+0.019161, shared 0.019550, shared wins 4/10, t=-0.32 — a statistical tie,
+i.e. "matches frozen." With the apple win kept 3/3 (0.0113 vs 0.0177),
+both halves of the 2026-07-22 pre-registered rule hold, and the default
+flips to `directions="sparse-shared"`. Note shared also sidestepped
+frozen's one detonation seed (12: 0.0288 -> 0.0199), consistent with the
+sign vote operating on this path. `latents` now defaults per substrate
+(K=2048 sparse, 64 low-rank) since it means patch size on one and gate
+count on the other. Every benchmark recorded before this date reproduces
+with `directions="frozen"`. Daniel's original instinct — direct weight
+mutation rather than low-rank gating — is now the library's default form,
+five days and one coordination mechanism after he proposed it.
+
+Still open on this substrate, in order: the 16-species check at round
+seven's original scale; distillation under sparse-shared (the gradient
+path's native coordinate system, where its +16pt precedent was measured);
+round-50 memory under sparse-shared (2048-dim mutation space — the
+dimensionality where the legacy mechanism lived); the apple capacity
+controls and K=8192 sweep from the owed list.
