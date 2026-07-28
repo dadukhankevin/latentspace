@@ -34,11 +34,21 @@ Every operator is a replaceable function:
   speciation         — how individuals move onto other fitness functions
   fold_selection     — whose latents get applied into the shared decoder
 
-Population starts at TWO random individuals, both assigned the first
-fitness function. There are no champions, no reserved slots per problem,
-and no fixed generation size. A best-ever record per function is kept as
-pure bookkeeping (never bred from) so the solver returns an answer for
-every function even after extinctions.
+Population starts from `founders` random individuals per fitness function
+(default 16 — measured 2026-07-27: every individual descends from the
+founding set, so founding count IS the run's coverage of the space; two
+founders left plateau problems unsolvable that sixteen solve 10/10, at a
+0.6% budget cost, and images are neutral-to-better). There are no
+champions, no reserved slots per problem, and no fixed generation size. A
+best-ever record per function is kept as pure bookkeeping (never bred
+from) so the solver returns an answer for every function even after
+extinctions.
+
+The fold defaults to a coordinate-wise SIGN VOTE across the population
+(2026-07-27): mean and median tie the single-champion rule at 30 paired
+seeds, but run-to-run spread halves (sd 2.05x, worst run 0.054 -> 0.030),
+because a majority vote structurally cannot be dragged by one
+unrepresentative individual the way absorbing a single champion can.
 """
 from __future__ import annotations
 
@@ -349,6 +359,27 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         size; everyone else shifts and is honestly re-scored.
         fold_optimizer="raw" absorbs whole bendings; "off" disables
         folding; fold_every=None restores the doubling schedule.
+    fold_selection: what the fold absorbs. Default sign_vote_fold_selection
+        (share-weighted majority vote on direction per coordinate) — ties
+        the champion rule on mean and median at 30 paired seeds but halves
+        run-to-run spread. largest_niche_champion_fold_selection is the
+        prior default; rank_weighted / centered_rank / natural_gradient
+        variants are measured-tie research arms. Combined-step rules fall
+        back to the champion under seeded bases (sparse/individual), where
+        coordinates are not shared across individuals.
+    fold_correction: who is corrected after a fold ("auto" = the donor
+        only). Correcting everyone preserves all phenotypes exactly and is
+        measurably WORSE (15% on the apple) — removing the consensus from
+        every individual shrinks the population's bendings toward each
+        other, and that variety is load bearing.
+    founders: random individuals founded per fitness function (default 16).
+        Founding count IS the run's coverage of the space — every later
+        individual descends from it. Sixteen took MountainCarContinuous
+        from 5/10 to 10/10 seeds at +0.6% budget; images neutral. Pass 2 to
+        reproduce benchmarks recorded before 2026-07-27.
+    init_decoder: a previous run's `GAResult.decoder` vector to warm-start
+        the shared decoder from (transfer). Measured: helps related image
+        families at every checkpoint; does NOT transfer on locomotion.
     The step dials for the two mutation spaces are global (dense feedback
     every epoch), start at 1.0, and self-tune by success rate with ties
     counted as successes. All other operators are the module-level defaults

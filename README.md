@@ -30,8 +30,11 @@ result.problems[1].best_phenotype
 
 ## How it works
 
-Two random founders per fitness function, then a classical GA loop with
-two twists that make it universal:
+Sixteen random founders per fitness function (`founders=` — the founding
+count is the run's entire coverage of the space, since every later
+individual descends from it; two was measured too few on plateau
+objectives), then a classical GA loop with two twists that make it
+universal:
 
 ```
 SPECIES    Each fitness function is a species. Fitness is organized as
@@ -51,13 +54,15 @@ BREEDING   Parents are drawn by share; the partner comes from the SAME
            separate operators with independent self-tuning step dials.
 
 FOLD       Evolution computes update directions: every 32 epochs the
-           best individual of the largest species donates its latents,
-           which pass through an Adam accumulator and are applied
-           DIRECTLY into the shared decoder's weights — exact
-           arithmetic, no training, no gradients of the fitness
-           function. Momentum keeps the cross-species consensus; the
-           second moment damps dimensions species disagree on. The
-           decoder itself learns what everyone keeps discovering.
+           population votes, coordinate by coordinate and weighted by
+           fitness share, on which DIRECTION each decoder dimension
+           should move — a majority vote that a single unrepresentative
+           individual cannot drag (measured: same mean as absorbing the
+           champion's latents, half the run-to-run spread). The step
+           passes through an Adam accumulator and is applied DIRECTLY
+           into the shared decoder's weights — exact arithmetic, no
+           training, no gradients of the fitness function. The decoder
+           itself learns what everyone keeps discovering.
 ```
 
 No phase ever touches a phenotype, no operator treats the genes and
@@ -107,7 +112,13 @@ solve(fitness, output_shape=(64, 64), architecture="my-arch", epochs=2_000)
 
 `architecture="auto"` picks a convolutional decoder for image shapes and a
 generic network otherwise; both carry the shared low-rank directions that
-latents gate.
+latents gate. One measured trap: every decoder is born emitting a
+near-constant phenotype. On images that is a good prior (widening it loses,
+3/3 paired seeds); when the phenotype is GEOMETRY — coordinates, a weight
+vector, anything whose meaning lives in the spread of its values — a
+constant output is a degenerate solution and evolution has nothing to
+select on. Register an architecture with its final layer scaled up (~10x)
+for such problems; `benchmarks/probe_walker.py` is the worked example.
 
 ## Tuning (all measured, all replaceable)
 
@@ -118,8 +129,14 @@ solve(
                               #   reported (result.evaluations)
     genes=64, latents=64,     # sizes of the two spaces
     children=16,              # children per epoch
-    population_cap=32,        # raised automatically to hold 2 per function
+    founders=16,              # founders per function — the run's coverage
+                              #   of the space; pass 2 for pre-2026-07-27
+                              #   benchmark reproduction
+    population_cap=32,        # raised automatically to hold all founders
     fold_every=32,            # Adam-fold cadence; fold_optimizer="raw"/"off"
+    fold_selection=...,       # default sign-vote; champion/rank variants
+                              #   in ga.py
+    init_decoder=...,         # warm-start from a prior run's result.decoder
     selection=...,            # swap any operator; see ga.py for signatures
 )
 ```
