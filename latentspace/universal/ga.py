@@ -318,7 +318,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
           mutation_memory="off", memory_drift=0.5,
-          distill="off", distill_steps=40,
+          distill="off", distill_steps=40, distill_decay=0.3,
           founding="per_function", founders=16,
           immigrants="off", immigrant_patience=32,
           progress=None, progress_every=None,
@@ -817,6 +817,14 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                         decoder.training_logits(Z[idx])).reshape(len(idx), -1)
                     ((out - P[idx]) ** 2).mean().backward()
                     distill_opt[0].step()
+                # The absorbed discovery is now in the base, so every
+                # bending shrinks toward zero — the distill analogue of the
+                # arithmetic fold subtracting its step from the donor. The
+                # first port omitted this and the discovery was applied
+                # TWICE (base + full-strength latents): apple t=-2.05
+                # against fold-only. Same constant as the experimental
+                # loop's patch_decay.
+                pop_latents *= float(distill_decay)
             pop_score = score(pop_genes, pop_latents, pop_fn,
                               pop_basis if seeded else None)
 

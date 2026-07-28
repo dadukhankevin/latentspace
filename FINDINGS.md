@@ -3680,3 +3680,42 @@ the sparse-patch substrate; the combo belongs there, not on the LoRA-gate
 path. `distill="on"` stays as a documented-falsified research arm; the
 designed follow-up is distillation under `directions="sparse"`, which is
 exactly where the experimental loop already proved it.
+
+
+**Round twenty-four, addendum — THE CORRECTED COMBO IS WORSE STILL, AND
+BOTH EXPLANATIONS DIED (2026-07-27).** Daniel challenged the round's
+mechanism story ("aren't the genes the inputs it's being given?") and he
+was right: the replay pairs are trivially within the base's capacity, and
+the +16pt experimental loop trained toward patch-dependent phenotypes with
+the patch equally absent from the input. The "hallucinate the missing
+input half" explanation is RETRACTED.
+
+The next hypothesis — the port dropped the loop's patch decay, so
+discoveries were applied twice (base + full-strength latents) — was
+implemented faithfully (`distill_decay=0.3`, all latents shrunk after each
+distill event, the loop's own constant) and falsified harder:
+
+    apple      fold-only 0.018378   combo+decay 0.026215   1/10, t=-3.44
+    8 species  fold-only 0.019161   combo+decay 0.027826   3/10, t=-1.98
+
+The decay made it WORSE (no-decay was t=-2.05). This is consistent with
+the one library-substrate law that keeps re-measuring: THE POPULATION'S
+VARIETY OF BENDINGS IS LOAD BEARING. Correct-all (round twenty) shrank
+everyone's bendings toward each other and cost 15%; multiplying every
+latent by 0.3 every 32 epochs is a far more aggressive version of the same
+move, and costs more. The experimental loop tolerated decay because its
+patches are re-grown by large weight-space mutations (sigma 0.2 over 1024
+free coordinates) within a stack whose whole reproduction cycle was
+co-designed with it; the library's latent dial adapts too slowly to
+re-grow crushed bendings between events.
+
+Cumulative, honest picture of the LoRA-gate substrate at these budgets:
+mid-run interference with the shared decoder or with everyone's latents —
+arithmetic correct-all, gradient distill, distill+decay — measures harmful
+or tied every time it is tried; donor-only arithmetic fold is the only
+consolidation that is at least never harmful, and the sign vote makes it
+safe. The +16pt gradient result remains real AND remains specific to the
+sparse-patch stack where it was measured. The one designed follow-up with
+measured precedent stands: distillation under `directions="sparse"`.
+Both `distill` and `distill_decay` stay in the library as
+documented-falsified research arms on this substrate.
