@@ -317,7 +317,9 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           directions="frozen", direction_every=16,
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
+          mutation_memory="off", memory_drift=0.5,
           founding="per_function", founders=16,
+          immigrants="off", immigrant_patience=32,
           progress=None, progress_every=None,
           init_decoder=None, seed=None) -> GAResult:
     """Maximize every fitness function over phenotypes of `output_shape`.
@@ -377,6 +379,25 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         individual descends from it. Sixteen took MountainCarContinuous
         from 5/10 to 10/10 seeds at +0.6% budget; images neutral. Pass 2 to
         reproduce benchmarks recorded before 2026-07-27.
+    mutation_memory: "shared" pools every child's birth delta SIGNED BY
+        ITS FITNESS CHANGE — failures included — into one Adam-style
+        accumulator per space (genes and latents separately, never mixed),
+        and later mutations drift along the accumulated direction
+        (`memory_drift` as a fraction of the mutation step). This is round
+        50's mechanism (the legacy engine's strongest result: image 1.38x
+        at t=3.88, the first sub-0.002 apple) ported to the redesign.
+        "off" disables it.
+    immigrants: "stall" keeps founding-style fresh random draws flowing
+        AFTER epoch zero: a function whose best-ever has not improved in
+        `immigrant_patience` epochs receives one fresh random individual
+        per epoch (scored honestly, competing on shares like anyone), and a
+        function that has gone EXTINCT is re-founded the same way — the
+        event-driven recolonization the speciation notes designed.
+        `founders` fixes coverage at epoch zero; this is the same medicine
+        at every later epoch. Even an immigrant culled immediately has
+        already contributed its evaluation to the best-ever record, which
+        on plateau objectives is the entire value of a fresh draw. "off"
+        disables (default pending measurement).
     init_decoder: a previous run's `GAResult.decoder` vector to warm-start
         the shared decoder from (transfer). Measured: helps related image
         families at every checkpoint; does NOT transfer on locomotion.
@@ -485,6 +506,28 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                       pop_basis if seeded else None)
 
     gene_dial, latent_dial = 1.0, 1.0
+    # Round-50 mutation memory: one accumulator per space. Every child is a
+    # gradient sample — its birth delta, signed and scaled by the fitness
+    # change it caused, failures included.
+    mem = {"g": [np.zeros(genes), np.zeros(genes), 0, None],
+           "l": [np.zeros(latents), np.zeros(latents), 0, None]}
+
+    def memory_direction(key):
+        m, v, steps, _ = mem[key]
+        if steps == 0:
+            return None
+        m_hat = m / (1 - 0.9 ** steps)
+        v_hat = v / (1 - 0.999 ** steps)
+        return m_hat / (np.sqrt(v_hat) + 1e-8)
+
+    def memory_update(key, deltas, df):
+        m, v, steps, df_scale = mem[key]
+        mag = float(np.abs(df).mean())
+        df_scale = mag if df_scale is None else 0.9 * df_scale + 0.1 * mag
+        g = ((df / max(df_scale, 1e-12))[:, None] * deltas).mean(axis=0)
+        mem[key] = [0.9 * m + 0.1 * g, 0.999 * v + 0.001 * g * g,
+                    steps + 1, df_scale]
+
     next_fold = 32
     adam_m = np.zeros(latents, dtype=np.float64)
     adam_v = np.zeros(latents, dtype=np.float64)
@@ -498,8 +541,32 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
     dir_v = np.zeros(dir_dim, dtype=np.float64)
     dir_t = 0
     history: list[dict] = []
+    last_improved = np.zeros(n_fns, dtype=np.int64)
+    prev_best = best_score.copy()
 
     for epoch in range(int(epochs)):
+        if immigrants == "stall":
+            improved = best_score > prev_best + 1e-12
+            last_improved[improved] = epoch
+            prev_best = np.maximum(prev_best, best_score)
+            alive = set(np.unique(pop_fn).tolist())
+            stalled = [f for f in range(n_fns)
+                       if f not in alive
+                       or epoch - last_improved[f] >= immigrant_patience]
+            if stalled:
+                n_new = len(stalled)
+                im_genes = rng.standard_normal((n_new, genes)).astype(np.float32)
+                im_latents = rng.standard_normal((n_new, latents)).astype(np.float32)
+                im_fn = np.asarray(stalled, dtype=np.int64)
+                im_basis = (rng.integers(0, 2 ** 31, n_new) if seeded
+                            else np.zeros(n_new, dtype=np.int64))
+                im_score = score(im_genes, im_latents, im_fn,
+                                 im_basis if seeded else None)
+                pop_genes = np.concatenate([pop_genes, im_genes])
+                pop_latents = np.concatenate([pop_latents, im_latents])
+                pop_basis = np.concatenate([pop_basis, im_basis])
+                pop_fn = np.concatenate([pop_fn, im_fn])
+                pop_score = np.concatenate([pop_score, im_score])
         weights = fitness_shares(pop_score, pop_fn)
 
         # --- reproduction
@@ -530,11 +597,23 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         mutates_latents = rng.random(children) < 0.5
         gi = np.flatnonzero(~mutates_latents)
         li = np.flatnonzero(mutates_latents)
+        pre_genes = child_genes[gi].copy() if len(gi) else None
+        pre_latents = child_latents[li].copy() if len(li) else None
         if len(gi):
             child_genes[gi] = gene_mutation(child_genes[gi], rng, gene_dial)
+            if mutation_memory == "shared":
+                direction = memory_direction("g")
+                if direction is not None:
+                    child_genes[gi] += (memory_drift * 0.12 * gene_dial
+                                        * direction).astype(np.float32)
         if len(li):
             child_latents[li] = latent_mutation(child_latents[li], rng,
                                                 latent_dial)
+            if mutation_memory == "shared":
+                direction = memory_direction("l")
+                if direction is not None:
+                    child_latents[li] += (memory_drift * 0.12 * latent_dial
+                                          * direction).astype(np.float32)
 
         # --- scoring and function adoption. Same-function parents pass the
         # function down; mixed parents have the child scored on both and it
@@ -566,6 +645,14 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         adopted_b = mixed & (child_fn == fb)
         ref[adopted_b] = pop_score[b][adopted_b]
         success = child_score >= ref - 1e-12
+        if mutation_memory == "shared":
+            improvement = child_score - ref
+            if len(gi):
+                memory_update("g", child_genes[gi] - pre_genes,
+                              improvement[gi])
+            if len(li):
+                memory_update("l", child_latents[li] - pre_latents,
+                              improvement[li])
         if len(gi):
             rate = float(success[gi].mean())
             gene_dial *= dial_step if rate > win_target else 1 / dial_step
