@@ -3767,3 +3767,27 @@ path's native coordinate system, where its +16pt precedent was measured);
 round-50 memory under sparse-shared (2048-dim mutation space — the
 dimensionality where the legacy mechanism lived); the apple capacity
 controls and K=8192 sweep from the owed list.
+
+
+**Round twenty-six — SUPER-DATASET, FIRST PROBE (2026-07-27, Daniel's
+idea).** Evolve ten images + ten soft labels; fitness trains a fresh MLP
+on only those ten examples (fixed inits, full batch, deterministic) and
+returns accuracy on real MNIST. 600 epochs, 16,144 student trainings,
+~30 min. Result: 23.0% on the fixed eval set, 19.7% on the untouched 10k
+test split — versus 10.1% random static (chance) and 42.6% for ten REAL
+digits through the identical pipeline.
+
+Verdict: the middle outcome. Double chance from pure black-box search —
+the direction is real — but half the real-digit bar, so no headline yet.
+The gradient-through-training literature reaches ~90% here; we are at 16k
+evaluations of a 7,940-dim phenotype with no gradient access, so the gap
+is not embarrassing, but it is the gap. Two named issues: the curve
+plateaus (23.0% flat over the last ~40 epochs), and eval->test drops
+23.0 -> 19.7 (mild overfit to the 1,024 fixed eval images and 2 fixed
+inits — Dogfight's lesson at smaller scale; more eval images / more inits
+per fitness call is the linear-cost fix). Untried levers, in order:
+longer budget (the plateau may be a dial floor, not a ceiling), more
+eval sampling, a labels-only arm (evolved labels on FIXED random images —
+isolates where the teaching signal lives), and distill under
+sparse-shared once that follow-up runs. demo/super_dataset.pt has the
+artifact; benchmarks/demo_super_dataset.py --live is the window.
