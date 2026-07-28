@@ -3791,3 +3791,21 @@ eval sampling, a labels-only arm (evolved labels on FIXED random images —
 isolates where the teaching signal lives), and distill under
 sparse-shared once that follow-up runs. demo/super_dataset.pt has the
 artifact; benchmarks/demo_super_dataset.py --live is the window.
+
+
+**Round twenty-six, part two — THE DECOMPOSITION: co-evolving labels was
+the handicap (2026-07-27).** Same pipeline, same budget, untouched-test
+scores:
+    full (images + labels evolved)   19.7%
+    labels-only (images = FROZEN random noise)   19.7%
+    images-only (labels = honest one-hot)        24.2%
+    ten real digits 42.6%, chance 10.1%
+Two facts. (1) Evolved soft labels on PERMANENTLY FROZEN NOISE exactly
+match the full run — a 100-dim search recovering everything the 7,940-dim
+search found, confirming the literature's "soft labels are the teacher"
+result from the black-box side. (2) With labels PINNED honest, image
+evolution beats both (24.2%): the full run had collapsed onto the
+label-shortcut local optimum, and co-evolving the two halves was strictly
+worse than evolving either alone. The obvious next arm: evolve images
+against one-hot labels, then fine-tune labels afterward (sequential, not
+joint). The gap to ten real digits (42.6%) remains the open problem.
