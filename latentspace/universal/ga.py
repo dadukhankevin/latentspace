@@ -428,7 +428,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         device = "mps" if torch.backends.mps.is_available() else "cpu"
     rng = np.random.default_rng(seed)
     torch.manual_seed(int(rng.integers(0, 2 ** 31)))
-    if directions == "sparse":
+    if directions in ("sparse", "sparse-shared"):
         from .sparse import build_sparse_decoder
         decoder = build_sparse_decoder(
             architecture, genes, output_shape, latents, device)
@@ -514,9 +514,19 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         pop_fn = np.zeros(n0, dtype=np.int64)
     pop_genes = rng.standard_normal((n0, genes)).astype(np.float32)
     pop_latents = rng.standard_normal((n0, latents)).astype(np.float32)
-    seeded = directions in ("individual", "sparse")
-    pop_basis = (rng.integers(0, 2 ** 31, n0) if seeded
-                 else np.zeros(n0, dtype=np.int64))
+    seeded = directions in ("individual", "sparse", "sparse-shared")
+    # "sparse-shared" (round seven's designed arm): free placement and full
+    # reach, but ONE run-level site set every individual shares — so
+    # species' folds land in the same coordinates and compose instead of
+    # colliding, and population-combining fold rules (sign vote, mean)
+    # are expressible because coordinates mean the same thing for everyone.
+    shared_sites = directions == "sparse-shared"
+    if shared_sites:
+        pop_basis = np.full(n0, int(rng.integers(0, 2 ** 31)), dtype=np.int64)
+        fresh_basis_rate = 0.0
+    else:
+        pop_basis = (rng.integers(0, 2 ** 31, n0) if seeded
+                     else np.zeros(n0, dtype=np.int64))
     pop_score = score(pop_genes, pop_latents, pop_fn,
                       pop_basis if seeded else None)
 
@@ -731,14 +741,17 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             # — a sign vote is not expressible as one.
             direct_step = None
             if isinstance(chosen, tuple) and chosen[0] == "step":
-                # A combined step mixes individuals, so under a SEEDED basis
-                # (sparse/individual) its coordinates refer to different
+                # A combined step mixes individuals, so under a PER-
+                # INDIVIDUAL seeded basis its coordinates refer to different
                 # weights per individual and it cannot be absorbed as one
-                # patch. Those arms fall back to the champion rule.
-                if not seeded:
+                # patch; those arms fall back to the champion rule. A
+                # SHARED-site basis has one coordinate system, so combined
+                # steps absorb fine there.
+                mixable = (not seeded) or shared_sites
+                if mixable:
                     direct_step = np.asarray(chosen[1], dtype=np.float64)
-                chosen = (largest_niche_champion_fold_selection(_shares, pop_fn)
-                          if seeded else int(np.argmax(_shares)))
+                chosen = (int(np.argmax(_shares)) if mixable else
+                          largest_niche_champion_fold_selection(_shares, pop_fn))
             # A rule may return one index (absorb that individual's latents,
             # correct that individual) or a weight vector over the whole
             # population (absorb the weighted mean). The mean has no single
@@ -751,7 +764,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             # not expressible as one absorb and those arms keep the
             # single-donor rule.
             averaged = (direct_step is None and not np.isscalar(chosen)
-                        and np.ndim(chosen) == 1)
+                        and np.ndim(chosen) == 1
+                        and ((not seeded) or shared_sites))
             if fold_correction == "donor":
                 correct_all = False
             elif fold_correction == "all":
@@ -765,7 +779,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                 # toward each other every fold, and that variety is load
                 # bearing. Exactness is not the objective.
                 correct_all = False
-            if averaged and seeded:
+            if averaged and seeded and not shared_sites:
                 chosen = int(np.argmax(np.asarray(chosen)))
                 averaged = False
             if averaged:

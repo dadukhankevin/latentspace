@@ -3719,3 +3719,29 @@ sparse-patch stack where it was measured. The one designed follow-up with
 measured precedent stands: distillation under `directions="sparse"`.
 Both `distill` and `distill_decay` stay in the library as
 documented-falsified research arms on this substrate.
+
+
+**Round twenty-five — SHARED-SITE SPARSE, THE PRE-REGISTERED ARM, FINALLY
+RUN (2026-07-27).** Daniel: "I thought we decided on direct weight
+mutations rather than LoRA?" The record's answer: decided, built, won the
+apple, LOST multi-function (round seven), and the tiebreaker was designed
+but never run — sparse patches whose K coordinates are drawn ONCE per run
+so every species edits the same weights. Decision rule as written on
+2026-07-22: matches frozen on multi-function AND keeps the apple win ->
+it is the default.
+
+Built as `directions="sparse-shared"`. Because everyone shares one
+coordinate system, the sign vote and the mean become expressible under
+sparse for the first time (per-individual sparse falls back to the
+champion rule).
+
+Apple, 3 paired seeds, 1500 epochs, K=2048 — THE WIN IS KEPT, all seeds:
+    frozen 0.017729   sparse 0.011817   shared 0.011292   (1.57x)
+Eight species, 3 paired seeds, 900 epochs:
+    frozen 0.017886   sparse 0.018385   shared 0.018884
+Round seven's multi-function CATASTROPHE DID NOT REPRODUCE — both sparse
+arms sit within ~3-6% of frozen instead of collapsing (harness differs:
+8 species not 16, founders=16, sign vote active on the shared arm). But
+"matches" is not yet established either: shared is 5.6% worse on mean,
+1/3 seeds. n=3 cannot call a 5.6% gap; the 10-seed paired confirmation
+decides the default per the rule.
