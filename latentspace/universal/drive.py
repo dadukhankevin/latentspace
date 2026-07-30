@@ -101,6 +101,11 @@ class Driver:
                          daemon=True).start()
         self._job_seq = 0
         self.rng = random.Random(ga_kwargs.get("seed"))
+        # Finch ethos: the round is an assembly of stages, not a script.
+        # Reorder, remove, or append callables to change the algorithm.
+        self.stages = [self.stage_breed, self.stage_audit,
+                       self.stage_consolidate]
+        self._log(f"LIVE PROGRESS: http://127.0.0.1:{self.port}/progress")
 
     # ------------------------------------------------------------ plumbing
 
@@ -290,19 +295,29 @@ class Driver:
         self._spawn(pf, extra_env={"AGENTIC_SURVIVORS": sv}).wait(
             timeout=self.agent_timeout)
 
+    # ------------------------------------------------- stages (composable)
+
+    def stage_breed(self, r):
+        jobs = self._call("ask", {})
+        self._log(f"round {r + 1}/{self.rounds}: {len(jobs)} jobs")
+        self._run_wave(jobs)
+
+    def stage_audit(self, r):
+        self._audit()
+        summary = self._call("summary")
+        self._log(f"population={summary['population']} "
+                  f"best={summary['best']}")
+
+    def stage_consolidate(self, r):
+        if self._call("due")["due"]:
+            self._consolidate()
+
     # ---------------------------------------------------------------- loop
 
     def run(self):
         for r in range(self.rounds):
-            jobs = self._call("ask", {})
-            self._log(f"round {r + 1}/{self.rounds}: {len(jobs)} jobs")
-            self._run_wave(jobs)
-            self._audit()
-            summary = self._call("summary")
-            self._log(f"population={summary['population']} "
-                      f"best={summary['best']}")
-            if self._call("due")["due"]:
-                self._consolidate()
+            for stage in self.stages:
+                stage(r)
         self._log(f"done: {self._call('summary')}")
 
 

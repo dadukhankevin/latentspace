@@ -12,7 +12,7 @@ Telephone mutation (from SCRISPR): do NOT read the parent's variation text. Inst
 
 Describe what that code ACTUALLY does — its real strategy as implemented, which may differ from whatever its author intended — as a fresh variation clause of the form "the base methodology, BUT <difference>" (under 150 words). Where the code's behavior suggests an improvement its own description would have missed, fold that improvement into your clause. Then FOLLOW base+your-clause to produce your own artifact from scratch — do not copy the parent's code.
 
-Work in {out_dir} and write there: variation.md, artifact.py (interface per the scorer's docstring; numpy only, pure, deterministic), log.md (structure exploited + each iteration with its score), score.json (canonical scorer output, verbatim).
+Work in {out_dir} and write there: variation.md, artifact.py (exactly the interface the scorer's docstring documents, deterministic given the seeds it receives), log.md (structure exploited + each iteration with its score), score.json (canonical scorer output, verbatim).
 
 Honesty: report exactly the number the canonical scorer printed for the artifact you ship (python3 {scorer} artifact.py). Never edit the scorer. Never pass --holdout.
 

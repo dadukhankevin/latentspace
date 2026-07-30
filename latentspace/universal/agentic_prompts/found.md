@@ -8,7 +8,7 @@ Invent ONE variation on the base methodology — a clause of the form "the base 
 
 Work in {out_dir} and write there:
 - variation.md — your variation clause
-- artifact.py — your solution, matching the interface documented in the scorer; numpy only, pure, deterministic, fast
+- artifact.py — your solution: exactly the interface the scorer's docstring documents, deterministic given the seeds it receives
 - log.md — what structure you exploit, and each iteration you tried with its score
 - score.json — the canonical scorer's printed output, verbatim, for your final artifact.py
 

@@ -36,9 +36,12 @@ An agent reports its own result with one line:
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import os
 import threading
+import time
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .agentic import AgenticGA
@@ -51,6 +54,11 @@ class GAService:
         self.ga = ga
         self.state_path = state_path
         self.lock = threading.Lock()
+        self.events = deque(maxlen=300)
+        self.started = time.time()
+
+    def event(self, text):
+        self.events.append((time.strftime("%H:%M:%S"), text))
 
     def call(self, name, body):
         ga = self.ga
@@ -97,7 +105,70 @@ class GAService:
         result, mutated = self.call(name, body)
         if mutated:
             self.ga.save(self.state_path)
+            if name == "tell":
+                self.event(f"tell {result['id']} score={body['score']:.5f}"
+                           f" ({body.get('variation', '')[:70]}...)")
+            elif name == "ask":
+                self.event(f"ask: {len(result)} jobs "
+                           f"({', '.join(j['kind'] for j in result)})")
+            elif name == "consolidated":
+                self.event(f"CONSOLIDATED -> base v"
+                           f"{self.ga.base_version}; "
+                           f"{len(result)} rewrites owed")
+            elif name == "rewrite":
+                self.event(f"rewrite {body['id']}")
+            elif name == "audit":
+                self.event(f"audit {body['id']}: "
+                           f"{'pass' if body.get('passed', True) else 'FAIL'}")
+            elif name == "abandon":
+                self.event(f"abandon {body['job_id']}")
         return result
+
+    # ------------------------------------------------------ progress page
+
+    def progress_html(self):
+        with self.lock:
+            ga = self.ga
+            s = ga.summary()
+            living = sorted((i for i in ga.individuals.values()
+                             if i["alive"]),
+                            key=lambda i: (i["task"], -i["score"]))
+            best = {t: b for t, b in ga.best.items() if b is not None}
+        rows = "".join(
+            f"<tr><td>{i['id']}</td><td>{i['task']}</td>"
+            f"<td>{i['score']:.5f}</td><td>{i['origin']}</td>"
+            f"<td>{'yes' if i['scored_on_base'] < ga.base_version else ''}"
+            f"</td><td>{'!' if i['contradicts_base'] else ''}</td>"
+            f"<td class=v>{html.escape(i['variation'][:160])}</td></tr>"
+            for i in living)
+        bests = "".join(
+            f"<tr><td>{t}</td><td><b>{b['score']:.5f}</b></td>"
+            f"<td>{b['id']}</td>"
+            f"<td class=v>{html.escape((b['variation'] or '')[:160])}</td>"
+            f"</tr>" for t, b in sorted(best.items()))
+        events = "".join(f"<tr><td>{ts}</td>"
+                         f"<td class=v>{html.escape(e)}</td></tr>"
+                         for ts, e in reversed(self.events))
+        mins = (time.time() - self.started) / 60
+        return f"""<!doctype html><html><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="5"><title>agentic run</title><style>
+body{{font-family:ui-monospace,monospace;margin:1.5em;background:#111;
+color:#ddd}} table{{border-collapse:collapse;margin:.8em 0;width:100%}}
+td,th{{border:1px solid #333;padding:.25em .5em;text-align:left;
+font-size:.85em}} th{{background:#1d1d1d}} .v{{color:#9a9;max-width:44em;
+overflow:hidden;white-space:nowrap;text-overflow:ellipsis}}
+h1,h2{{font-size:1em;color:#7ac}} .k{{color:#c96}}</style></head><body>
+<h1>agentic run &mdash; round {s['round']}, base v{s['base_version']},
+population {s['population']}, {s['stale']} stale,
+{s['open_jobs']} jobs in flight, {mins:.0f} min up</h1>
+<h2>best ever per task</h2>
+<table><tr><th>task</th><th>score</th><th>id</th><th>variation</th></tr>
+{bests}</table>
+<h2>living population</h2>
+<table><tr><th>id</th><th>task</th><th>score</th><th>origin</th>
+<th>stale</th><th>contra</th><th>variation</th></tr>{rows}</table>
+<h2>events (newest first)</h2>
+<table>{events}</table></body></html>"""
 
 
 GETS = {"summary", "due", "batch", "stale", "contradictions"}
@@ -117,6 +188,14 @@ def make_handler(service):
 
         def _route(self, allowed):
             name = self.path.lstrip("/").split("?")[0]
+            if name in ("", "progress") and allowed is GETS:
+                page = service.progress_html().encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(page)))
+                self.end_headers()
+                self.wfile.write(page)
+                return
             if name not in allowed:
                 self._reply(404, {"error": f"unknown route {name!r}"})
                 return

@@ -29,6 +29,7 @@ def server(tmp_path):
         with urllib.request.urlopen(req) as r:
             return json.loads(r.read())
 
+    call.port = port
     yield call, tmp_path
     srv.shutdown()
 
@@ -69,6 +70,17 @@ def test_full_round_over_http(server):
     assert ga.summary() == call("summary")
     # server.json advertises the port for agents
     assert "port" in json.load(open(run_dir / "server.json"))
+
+
+def test_progress_page_renders(server):
+    call, _ = server
+    jobs = call("ask", {})
+    call("tell", {"job_id": jobs[0]["job_id"], "variation": "v", "score": 1.0})
+    import urllib.request
+    with urllib.request.urlopen(
+            f"http://127.0.0.1:{call.port}/progress") as r:
+        page = r.read().decode()
+    assert "living population" in page and "tell i0000" in page
 
 
 def test_errors_are_json_not_crashes(server):
