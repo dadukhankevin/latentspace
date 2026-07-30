@@ -4276,3 +4276,29 @@ transfer question — does binpack's tier lesson or the shared
 THIRD task's founders under base v1 vs v0? Those two runs, at success-
 rate methodology (agent decode is nondeterministic; paired seeds do not
 exist here), are what could turn scaffolding into a mechanism row.
+
+**Round thirty-eight addendum — the substrate drives itself
+(2026-07-30).** Two pieces landed after the smoke run, both
+scaffolding, neither claiming performance. First, the reporting server
+(`latentspace/universal/serve.py`): one process holds the engine behind
+a localhost HTTP API, every route lock-serialized, state saved after
+each mutation — decoder agents now POST their own results the moment
+they finish instead of relaying through the orchestrator (the smoke
+run's hand-relay was the single-writer bottleneck and once mangled a
+variation's characters in transit). Second, the driver
+(`latentspace/universal/drive.py`): the whole loop as one command —
+prompts rendered per job from templates, any agent CLI shelled out per
+job, winners audited mechanically (canonical score must reproduce
+exactly; holdout recorded), consolidation proposals saved and held for
+human review by default (`--auto-consolidate` for overnight). The
+mutation operators rotate through SCRISPR's vocabulary (Daniel's
+earlier prompt-evolution project, the direct ancestor of this
+substrate): one-deliberate-change, telephone (describe the parent's
+CODE, not its prompt, then re-derive — attacks textual anchoring), and
+masked (blank ~25% of the parent's clause, refill). Founder jobs now
+carry ASSIGNED research angles, the direct fix for this round's
+founder-collapse observation. All of it tested end to end with a
+scripted fake agent CLI (tests/test_drive.py, tests/test_serve.py);
+every operator choice here is design inheritance, not measurement —
+the ledger row is unchanged until the comparison run (one agent
+iterating alone, matched agent-call budget) is actually run.

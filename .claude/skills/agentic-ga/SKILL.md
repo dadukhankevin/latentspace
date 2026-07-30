@@ -48,7 +48,20 @@ never improvised by any agent.
 
 ## The loop
 
-Preferred: start the reporting server and let agents report themselves —
+Fully self-driving (preferred for real runs): one command renders
+prompts, spawns agents via any CLI, audits mechanically, and pauses for
+consolidation review (--auto-consolidate to run overnight):
+
+    python3 -m latentspace.universal.drive --run <run_dir> \
+        --tasks ... --tasks-dir benchmarks/agentic/tasks \
+        --agent-cmd 'claude -p "$(cat {promptfile})"' --rounds 6
+
+Prompt templates live in latentspace/universal/agentic_prompts/
+(SCRISPR-style operator rotation: one-change / telephone / masked
+mutation, smart crossover, assigned founder angles). When orchestrating
+manually instead, the same templates are the reference prompts.
+
+Semi-manual: start the reporting server and let agents report themselves —
 
     python3 -m latentspace.universal.serve --run <run_dir> --tasks ... &
 

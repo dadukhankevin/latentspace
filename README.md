@@ -169,8 +169,26 @@ procedure — is the `agentic-ga` skill in
 [.claude/skills/agentic-ga/](.claude/skills/agentic-ga/SKILL.md); the
 testbed (heuristic synthesis for bin packing and TSP tour construction,
 deterministic scorers with held-out audit seeds) is in
-[benchmarks/agentic/](benchmarks/agentic/). Scaffolding-stage: the loop
-runs end to end; no performance claims yet.
+[benchmarks/agentic/](benchmarks/agentic/).
+
+It also runs itself. `python3 -m latentspace.universal.serve` holds the
+engine behind a localhost HTTP API so agents report results the moment
+they finish, and `python3 -m latentspace.universal.drive --run <dir>
+--tasks ... --tasks-dir ... --agent-cmd 'claude -p "$(cat
+{promptfile})"'` is the whole loop as one command: it renders one prompt
+per job, shells out to any agent CLI, audits winners mechanically
+(canonical re-run must reproduce exactly; held-out seeds catch
+train-only gains), and stops for human review of each consolidation
+proposal unless `--auto-consolidate` is passed for overnight runs. The
+mutation operators are rotated per job and owe their design to
+[SCRISPR](https://github.com/dadukhankevin/SCRISPR), the prompt-evolution
+predecessor of this substrate: one-deliberate-change, telephone
+(describe the parent's *code*, not its prompt, then re-derive), and
+masked (blank a quarter of the parent's clause and refill). Founding
+jobs carry assigned research angles — the first smoke run measured
+"be distinct" founders collapsing to one idea per task, so distinctness
+is assigned, not requested. Scaffolding-stage: the loop runs end to
+end; no performance claims yet.
 
 ## Tuning (all measured, all replaceable)
 
