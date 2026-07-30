@@ -3809,3 +3809,43 @@ label-shortcut local optimum, and co-evolving the two halves was strictly
 worse than evolving either alone. The obvious next arm: evolve images
 against one-hot labels, then fine-tune labels afterward (sequential, not
 joint). The gap to ten real digits (42.6%) remains the open problem.
+
+
+**Round twenty-seven — THE EXTERNAL VERDICT: zero wins, ELO -200
+(2026-07-29).** Daniel submitted `dogfight_win_decoder.onnx` to the
+Paradigm Dogfight leaderboard. Result over 60 matches against other
+entrants: 0 elimination wins, 0 HP wins, 12 draws, 13 HP losses, 35
+elimination losses. ELO -200.
+
+This is the campaign's FIRST externally graded number and it invalidates
+the local one. Against the four scripted built-in opponents the same pilot
+went 45W/42D/73L — a 28% win rate, 177 tournament points, beating classic
+direct-weight neuroevolution 177-155. Against real submissions it won
+NOTHING. The built-in opponents are not a weak proxy for the competitive
+distribution; they are a different and far easier problem, and every
+Dogfight number in rounds eighteen and twenty-two measures that easier
+problem, not the benchmark.
+
+What this does NOT invalidate: the decoder-vs-direct comparison was run on
+the same (easy) opponents at matched budget, so it remains a valid
+statement about those opponents — and nothing more. The 5x decisive-win
+margin over direct search is a real difference in behaviour on a weak
+adversary, untested against strong ones.
+
+Two concrete leads. (1) A REPLAY-LENGTH DISCREPANCY: submitted match
+durations run to 3:00, while RULES.md specifies 90 seconds / 10800 ticks
+at 120Hz, which is what the local sim enforces and what we trained
+against. Two of the six listed losses went full duration and lost on HP.
+If real matches are ~2x longer, the pilot's endgame is entirely untrained.
+VERIFY BEFORE ANY RERUN. (2) The binding problem is the TRAINING SIGNAL,
+not the fitness shape — three fitness revisions (HP differential, win
+weighted, tournament aligned) moved local numbers around and none of it
+transferred, because beating four fixed scripted bots teaches a pilot to
+beat those four. The standard answer is SELF-PLAY: evolve against the
+run's own population, which this library already maintains (96 pilots) and
+which makes the opposition improve alongside the pilot. That is a real
+mechanism change and Daniel's call.
+
+Standing lesson, the sharpest of the campaign: an internal benchmark can
+be beaten thoroughly and mean nothing. Every other result in this file is
+graded by us against opponents we chose.
