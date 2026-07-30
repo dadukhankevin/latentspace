@@ -3981,7 +3981,7 @@ a predecessor or a neighbour. Update this table when a default changes.
 | Win-rate mutation dials | legacy round 31 records; redesign parity runs. KNOWN LIMIT: collapse on plateau objectives (measured; founders is the mitigation) | PROVEN with boundary |
 | `directions="sparse-shared"` (default substrate) | pre-registered rule met: apple win kept 3/3 (0.0113 vs 0.0177), multi-function tie at 10 seeds (t=-0.32) | PROVEN |
 | Sign-vote fold selection (default) | 30 paired seeds: mean/median tie vs champion, run-to-run sd halved | PROVEN — but only RELATIVE TO other fold rules, GIVEN folding |
-| **The arithmetic fold itself (`fold="on"`)** | fold on-vs-off: apple 6/10 t=1.40 ns; 8 species 4/10 t=0.50 tie. Long budgets: NEVER ablated | **NO DIRECT EVIDENCE at any budget** |
+| **The arithmetic fold itself (`fold="on"`)** | on top of distillation: t=-0.10, exactly nothing (round 32); alone vs off: ns (round 23). The fold EVENT is load-bearing as distillation's schedule; the arithmetic STEP has no measured contribution anywhere | **STEP: no evidence. EVENT: distillation's clock** |
 | `init_decoder` warm start | related image families: warm wins every checkpoint; CA alphabet: yes. Locomotion: FAILS both quadrants | PROVEN, family-dependent |
 | `mutation_memory="shared"` (off) | tie as ported (t=-0.04); legacy evidence belongs to the legacy substrate | UNSUPPORTED here |
 | `immigrants="stall"` (off) | no effect either direction at 10 seeds | UNSUPPORTED |
@@ -4016,3 +4016,30 @@ the slot, measured, on the substrate where its coordinate system is
 coherent. "The decoder itself learns what everyone keeps discovering" is
 now a measured property of the shipped library, in the multi-function case,
 which is the only case the sentence was ever supposed to be about.
+
+
+**Round thirty-two — THE FOLD, FULLY DECOMPOSED (2026-07-30).** Daniel:
+"without the fold the decoder is static, right?" Three arms, 8 species, 10
+paired seeds, today's defaults, `fold_lr=0` giving the middle arm (event,
+re-score and distillation intact, arithmetic absorb exactly zero):
+
+    arithmetic + distillation   0.013911   (reference)
+    distillation only           0.013850   -0.4%, t=-0.10
+    fold off (base static)      0.018131   +30.3%, t=+7.95
+
+The answer is now complete. A static base costs 30% on multi-function
+problems — consolidation is real and strongly significant. ALL of it is
+the gradient step: zeroing the arithmetic absorb changes nothing to two
+decimal places of t. The fold event survives as the schedule on which
+distillation and its honest re-score happen; the arithmetic step inside it
+is a passenger with no measured contribution anywhere in the record —
+riding alongside distillation (t=-0.10), alone at short budgets (round
+23), or in any configuration ever directly tested.
+
+Kept on as default anyway: it is measured harmless here, it is the only
+consolidation available to single-function runs (directionally positive,
+6/10), and the sign vote's variance result applies to it. But the story
+the library now tells is the one Daniel specified before the redesign
+deferred it: EVOLUTION VETS, GRADIENTS CONSOLIDATE. The "no training"
+arithmetic fold was the placeholder; round thirty-one installed the real
+mechanism; this round measured the placeholder's contribution at zero.
