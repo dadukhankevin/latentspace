@@ -3,8 +3,9 @@
 The flagship single-fitness benchmark: a 96x96 photo, MSE fitness. The
 retired per-individual engine's records are the bar: 0.004566 at 120k
 evaluations (round 31), 0.00178 at 150k (round 50, the all-time record).
-This run shows what the redesigned engine — genes + latents on one shared
-decoder, Adam fold — does on the same target.
+This run shows what the current engine — genes + latents on one shared
+decoder, library defaults (sparse-shared patches; distillation is
+multi-function-only, so it does not fire here) — does on the same target.
 """
 from __future__ import annotations
 
@@ -35,11 +36,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--epochs", type=int, default=9_000)
     parser.add_argument("--seed", type=int, default=3)
-    parser.add_argument("--directions", default="frozen",
-                        choices=("frozen", "sparse", "individual", "evolve"))
-    parser.add_argument("--latents", type=int, default=64,
-                        help="latent size; for --directions sparse this is "
-                             "the patch size K (measured best ~2048)")
+    parser.add_argument("--directions", default=None,
+                        choices=("frozen", "sparse", "sparse-shared",
+                                 "individual", "evolve"),
+                        help="omit to use the library default (sparse-shared)")
+    parser.add_argument("--latents", type=int, default=None,
+                        help="omit for the library default (per substrate: "
+                             "patch K=2048 sparse, 64 low-rank)")
     args = parser.parse_args()
 
     target = load_apple()
@@ -63,9 +66,13 @@ def main():
         print(f"  epoch {epoch:>6}  {spent:>7} evals  "
               f"mse {-scores[0]:.6f}", flush=True)
 
+    overrides = {}
+    if args.directions is not None:
+        overrides["directions"] = args.directions
+    if args.latents is not None:
+        overrides["latents"] = args.latents
     result = solve(fitness, output_shape=(96, 96, 3), epochs=args.epochs,
-                   seed=args.seed, directions=args.directions,
-                   latents=args.latents, progress=progress)
+                   seed=args.seed, progress=progress, **overrides)
     mse = -result.best_fitness
     print(f"final: mse {mse:.6f} in {result.evaluations} evaluations")
     print("legacy bars: 0.004566 @ 120k (round 31), "
