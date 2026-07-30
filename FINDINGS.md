@@ -4043,3 +4043,41 @@ the library now tells is the one Daniel specified before the redesign
 deferred it: EVOLUTION VETS, GRADIENTS CONSOLIDATE. The "no training"
 arithmetic fold was the placeholder; round thirty-one installed the real
 mechanism; this round measured the placeholder's contribution at zero.
+
+
+**Round thirty-three — SPECIES-PER-OPPONENT DOGFIGHT, FALSIFIED AS BUILT
+(2026-07-30).** Six species (four anti-script specialists, one versus the
+hall of fame, one generalist) sharing one decoder, with distillation on.
+The generalist champion — the intended submission — is the second-worst
+pilot of the campaign: 2W/0D/158L (6 tournament points) against the four
+scripted fighters on unseen spawns, and 9W/0D/71L against yesterday's
+submitted pilot (the ELO-583 one). For scale, yesterday's pilot scores 82
+points on the same scripted suite and the pre-self-play one scored 194.
+
+Two named suspects, recorded before any redesign:
+
+1. GENERALIST FITNESS STARVATION, self-inflicted. Splitting the fitness
+   into six species cut each evaluation to ~6 matches, and the
+   generalist's six were ONE spawn per scripted opponent plus two versus
+   the archive. One spawn per opponent is a coin-flip estimate; selection
+   inside the generalist species — the species we ship — was close to
+   random. The specialists at least got six spawns of a single opponent.
+
+2. THE RELATED-FAMILY CONDITION MAY FAIL IN POLICY-WEIGHT SPACE. The
+   10/10 distillation win consolidated eight images that share pixel
+   statistics. Here distillation trains the base to reproduce six
+   champions' WEIGHT VECTORS — and a good anti-chaser policy may carry no
+   usable prior for fighting ace, the same boundary transfer hit on
+   locomotion ("a good creature for terrain A is no prior for terrain B").
+   If the champions' weight vectors are mutually distant, the base learns
+   a lookup that helps no new individual.
+
+The attribution experiment that separates them, designed not run: fix the
+generalist's starvation (3+ spawns per opponent) and run distill on vs off
+at matched budget. If distill-off matches distill-on, suspect 2 is
+confirmed for policy weights and the species architecture needs a
+different sharing mechanism than weight-space distillation.
+
+Also recorded: the specialists' champions were not saved (only the
+generalist's), so whether the specialists learned their own niches is
+unknown — save every species' champion next time.
