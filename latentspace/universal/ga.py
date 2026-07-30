@@ -318,7 +318,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
           mutation_memory="off", memory_drift=0.5,
-          distill="off", distill_steps=40, distill_decay=0.3,
+          distill="auto", distill_steps=40, distill_decay=0.3,
           founding="per_function", founders=16,
           immigrants="off", immigrant_patience=32,
           progress=None, progress_every=None,
@@ -823,7 +823,15 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                 pop_latents -= step          # every phenotype preserved
             else:
                 pop_latents[donor] -= step
-            if distill == "on" and ((not seeded) or shared_sites) \
+            # "auto" (default since 2026-07-30): distillation is a CROSS-
+            # PROBLEM consolidator — it trains the base toward what co-
+            # resident species' patches achieved, so it has nothing to offer
+            # a single function (apple: 5/10, t=-1.38) and a 30% win when
+            # species share the decoder (8 species: 10/10, t=+16.7, the
+            # largest effect in the campaign). Auto = on exactly where it is
+            # measured to pay.
+            distill_on = (distill == "on" or (distill == "auto" and n_fns >= 2))
+            if distill_on and ((not seeded) or shared_sites) \
                     and hasattr(decoder, "training_logits"):
                 for f in range(n_fns):
                     if best_pheno[f] is not None:

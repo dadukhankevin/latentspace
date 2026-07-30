@@ -3985,6 +3985,34 @@ a predecessor or a neighbour. Update this table when a default changes.
 | `init_decoder` warm start | related image families: warm wins every checkpoint; CA alphabet: yes. Locomotion: FAILS both quadrants | PROVEN, family-dependent |
 | `mutation_memory="shared"` (off) | tie as ported (t=-0.04); legacy evidence belongs to the legacy substrate | UNSUPPORTED here |
 | `immigrants="stall"` (off) | no effect either direction at 10 seeds | UNSUPPORTED |
-| `distill="on"` (off) | falsified on LoRA substrate twice (t=-2.05, t=-3.44); +16pt precedent lives on the SPARSE substrate in an experimental file | PENDING the sparse-shared run |
+| `distill="auto"` (default: on for multi-function) | ON ITS NATIVE SUBSTRATE: 8 co-resident species 10/10 seeds, t=+16.7, -30% MSE — the largest effect in the campaign; single-function 5/10, t=-1.38 (auto keeps it off there); falsified on LoRA twice (coordinate-system mismatch, measured) | PROVEN, multi-function |
 | Gradient distillation as such (not installed) | +16pt over arithmetic fold (3 seeds); transfer; the Design The Past demo | PROVEN, not shipped |
 | One-point gene crossover / whole-latent inheritance | legacy rounds 42-45 (t=5.6 image, t=5.3 curve) measured on the LEGACY substrate; not re-attributed since the redesign | LEGACY EVIDENCE |
+
+
+**Round thirty-one — THE SLOT TEST: gradient consolidation, proven in the
+library (2026-07-30).** Distillation installed in the consolidation slot on
+its native substrate (sparse-shared), 10 paired seeds, both families,
+everything else at today's defaults:
+
+    apple (single fn)   off 0.012216   on 0.016189    5/10,  t=-1.38
+    8 species           off 0.019574   on 0.013748   10/10,  t=+16.68
+
+Thirty percent better, every seed, the largest effect size in thirty-one
+rounds. And exactly on the registered prediction: distillation is a
+CROSS-PROBLEM consolidator — the base learns what co-resident species'
+patches keep achieving, so it has nothing to offer one function alone and
+everything to offer the case the library exists for. Shipped as
+`distill="auto"`: on when there are 2+ fitness functions on a
+shared-coordinate substrate, off otherwise (both branches verified
+bit-identical to their explicit settings).
+
+This closes the arc Daniel's question opened ("the decoder does learn,
+right? why do we keep questioning it?"). The answer the ledger now
+records: the representation was always proven; the ARITHMETIC fold remains
+without direct evidence; and the mechanism that earned the consolidation
+slot's credibility — gradient distillation — is finally the mechanism in
+the slot, measured, on the substrate where its coordinate system is
+coherent. "The decoder itself learns what everyone keeps discovering" is
+now a measured property of the shipped library, in the multi-function case,
+which is the only case the sentence was ever supposed to be about.
