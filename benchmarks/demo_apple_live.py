@@ -18,7 +18,6 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from benchmarks.demo_image_species_vector import ReferenceSpeciesView
 from latentspace.universal import solve
 
 DEMO = Path(__file__).resolve().parent.parent / "demo/apple_demo_recovered.json"
@@ -30,6 +29,42 @@ def load_apple() -> np.ndarray:
     encoded = payload["imgs"]["target"].split(",", 1)[1]
     image = Image.open(io.BytesIO(base64.b64decode(encoded))).convert("RGB")
     return np.asarray(image, dtype=np.float32) / 255.0         # (96, 96, 3)
+
+
+class AppleView:
+    """Target and evolved side by side, MSE curve underneath. One image,
+    one curve, no dead space."""
+
+    def __init__(self, target):
+        import matplotlib.pyplot as plt
+        self.plt = plt
+        plt.ion()
+        self.fig = plt.figure(figsize=(9, 5.5), layout="constrained")
+        self.fig.canvas.manager.set_window_title("apple — live")
+        grid = self.fig.add_gridspec(2, 2, height_ratios=[3, 2])
+        ax_t = self.fig.add_subplot(grid[0, 0])
+        ax_t.imshow(target)
+        ax_t.set_title("target", fontsize=11)
+        self.ax_e = self.fig.add_subplot(grid[0, 1])
+        self.im = self.ax_e.imshow(target * 0)
+        self.ax_e.set_title("evolved", fontsize=11)
+        for ax in (ax_t, self.ax_e):
+            ax.set_xticks([]); ax.set_yticks([])
+        self.ax_c = self.fig.add_subplot(grid[1, :])
+        self.xs, self.ys = [], []
+        plt.show(block=False)
+
+    def update(self, spent, image, mse):
+        self.im.set_data(image.clip(0, 1))
+        self.ax_e.set_title(f"evolved — mse {mse:.4f}", fontsize=11)
+        self.xs.append(spent); self.ys.append(mse)
+        self.ax_c.clear()
+        self.ax_c.semilogy(self.xs, self.ys, color="#c2703a", lw=1.6)
+        self.ax_c.set_xlabel("evaluations")
+        self.ax_c.set_ylabel("best MSE (log)")
+        for side in ("top", "right"):
+            self.ax_c.spines[side].set_visible(False)
+        self.plt.pause(0.001)
 
 
 def main():
@@ -53,16 +88,12 @@ def main():
         return -((phenotypes.reshape(len(phenotypes), -1) - flat) ** 2
                  ).mean(dim=1)
 
-    view = ReferenceSpeciesView(
-        ["apple"], target.transpose(2, 0, 1)[None], args.epochs)
+    view = AppleView(target)
 
     def progress(epoch, epochs, spent, phenos, scores):
         if phenos[0] is None:
             return
-        view.update(epoch, [{
-            "image": phenos[0].reshape(96, 96, 3).transpose(2, 0, 1),
-            "score": float(scores[0]),
-        }])
+        view.update(spent, phenos[0].reshape(96, 96, 3), -float(scores[0]))
         print(f"  epoch {epoch:>6}  {spent:>7} evals  "
               f"mse {-scores[0]:.6f}", flush=True)
 
