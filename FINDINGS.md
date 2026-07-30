@@ -3960,3 +3960,31 @@ groups); or maximin over the SCRIPTED groups only with the hall of fame
 kept as a mean term (the floor is fixed opponents, so their groups retain
 variance). One measured law from the pair of runs: the aggregator is not
 bookkeeping — it decides what kind of pilot exists at all.
+
+
+## The claims ledger (2026-07-30)
+
+Why this exists: confidence transfers between mechanisms when they share a
+slot name, but evidence does not. The consolidation slot was proven with
+gradient distillation, then the redesign installed arithmetic application
+in the same slot and the credibility silently followed the name. Each
+shipped mechanism below is listed with its DIRECT evidence only — what was
+measured about that mechanism itself, on the current substrate, not about
+a predecessor or a neighbour. Update this table when a default changes.
+
+| Mechanism (shipped state) | Direct evidence | Status |
+|:---|:---|:---|
+| Genes+latents through ONE shared decoder (the representation) | beats pixel GA 10/0 eval-matched and 7.2x wall-clock; beats tour GA & CMA-ES at TSP >=100, margins widen; 8.1x over random draws from the same decoder (images) | PROVEN, core |
+| Modality-matched architecture (conv for images) | round 17: -23% with identical evolution | PROVEN |
+| `founders=16` (default) | MountainCar 5/10 -> 10/10, +0.6% budget; apple neutral-to-better | PROVEN |
+| Species / fitness shares / 5% outcross selection | assortative selection un-floored both dials vs fully-mixed; redesign-era paired runs | PROVEN (redesign era) |
+| Win-rate mutation dials | legacy round 31 records; redesign parity runs. KNOWN LIMIT: collapse on plateau objectives (measured; founders is the mitigation) | PROVEN with boundary |
+| `directions="sparse-shared"` (default substrate) | pre-registered rule met: apple win kept 3/3 (0.0113 vs 0.0177), multi-function tie at 10 seeds (t=-0.32) | PROVEN |
+| Sign-vote fold selection (default) | 30 paired seeds: mean/median tie vs champion, run-to-run sd halved | PROVEN — but only RELATIVE TO other fold rules, GIVEN folding |
+| **The arithmetic fold itself (`fold="on"`)** | fold on-vs-off: apple 6/10 t=1.40 ns; 8 species 4/10 t=0.50 tie. Long budgets: NEVER ablated | **NO DIRECT EVIDENCE at any budget** |
+| `init_decoder` warm start | related image families: warm wins every checkpoint; CA alphabet: yes. Locomotion: FAILS both quadrants | PROVEN, family-dependent |
+| `mutation_memory="shared"` (off) | tie as ported (t=-0.04); legacy evidence belongs to the legacy substrate | UNSUPPORTED here |
+| `immigrants="stall"` (off) | no effect either direction at 10 seeds | UNSUPPORTED |
+| `distill="on"` (off) | falsified on LoRA substrate twice (t=-2.05, t=-3.44); +16pt precedent lives on the SPARSE substrate in an experimental file | PENDING the sparse-shared run |
+| Gradient distillation as such (not installed) | +16pt over arithmetic fold (3 seeds); transfer; the Design The Past demo | PROVEN, not shipped |
+| One-point gene crossover / whole-latent inheritance | legacy rounds 42-45 (t=5.6 image, t=5.3 curve) measured on the LEGACY substrate; not re-attributed since the redesign | LEGACY EVIDENCE |
