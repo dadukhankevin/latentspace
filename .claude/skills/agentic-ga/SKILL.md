@@ -48,7 +48,21 @@ never improvised by any agent.
 
 ## The loop
 
-Drive the engine from short python3 -c snippets (or a driver script):
+Preferred: start the reporting server and let agents report themselves —
+
+    python3 -m latentspace.universal.serve --run <run_dir> --tasks ... &
+
+One process holds the engine; every request is lock-serialized and
+state.json is saved after each mutation, so concurrent agents can POST
+the moment they finish. The port is in the run's `server.json`. The
+orchestrator drives rounds via `POST /ask`, `GET /due`, `GET /batch`,
+`POST /consolidated`, `POST /rewrite`; each decoder-child ends its work
+with `curl -s -X POST localhost:PORT/tell -d '{"job_id": ..., 
+"variation": ..., "score": ..., "artifact": ...}'` (its final JSON
+message then just confirms what it already reported). Routes are in the
+serve.py docstring.
+
+Fallback (no server): drive the engine from short python3 snippets —
 `ask()` → spawn one subagent per job **in parallel** via the Agent tool
 → `tell()` each result (or `abandon()` failures) → `save()`. When
 `consolidation_due()`: audit the batch, spawn the consolidator, apply
