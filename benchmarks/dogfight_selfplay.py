@@ -50,27 +50,46 @@ HOF_SEEDS = 3               # spawn seeds per hall-of-fame opponent
 WORKERS = 4
 
 
-def evaluate(weights, path, write, hof_paths, seed_base):
-    """Scripted floor + hall-of-fame sample, tournament scoring."""
+def evaluate(weights, path, write, hof_paths, seed_base, mode="mean"):
+    """Scripted floor + hall-of-fame sample, tournament scoring.
+
+    mode="min" (Daniel, 2026-07-30): fitness is the MINIMUM over opponent
+    GROUPS (each group's mean over its spawns) — maximin. Round
+    twenty-eight measured why the average fails as a floor: the population
+    paid for a 1W/39L chaser hole with hall-of-fame wins, because an
+    average lets strong matchups subsidise abandoned ones. Under min, your
+    worst matchup IS your fitness, and once it improves a different
+    matchup becomes binding, so pressure rotates until nothing is
+    neglected. Groups, not individual matches: a per-match min would make
+    every early pilot's fitness "my worst spawn" = a loss, flattening the
+    landscape into the plateau that kills this method (FINDINGS sixteen).
+    """
     write(weights, path)
-    total, n, record = 0.0, 0, [0, 0, 0]
+    groups, record = [], [0, 0, 0]
     for opponent in OPPONENTS:
+        g = []
         for k in range(SCRIPT_SEEDS):
             r = play(path, opponent, seed_base + k)
             if r is None:
                 return -100.0, record
-            total += match_score(r); n += 1
+            g.append(match_score(r))
             record[0 if r[3] == "Player0Win"
                    else (2 if r[3] == "Player1Win" else 1)] += 1
+        groups.append(float(np.mean(g)))
     for rival in hof_paths:
+        g = []
         for k in range(HOF_SEEDS):
             r = play(path, str(rival), seed_base + 100 + k)
             if r is None:
                 continue                    # a corrupt archive entry
-            total += match_score(r); n += 1
+            g.append(match_score(r))
             record[0 if r[3] == "Player0Win"
                    else (2 if r[3] == "Player1Win" else 1)] += 1
-    return total / max(1, n), record
+        if g:
+            groups.append(float(np.mean(g)))
+    if mode == "min":
+        return float(np.min(groups)), record
+    return float(np.mean(groups)), record
 
 
 def main():
@@ -79,13 +98,14 @@ def main():
     parser.add_argument("--hidden", type=int, default=256)
     parser.add_argument("--seed", type=int, default=3)
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--fitness", default="min", choices=("mean", "min"))
     args = parser.parse_args()
 
     model, inits, sizes, n_weights = build_template(args.hidden)
     write = make_writer(model, inits, sizes)
     print(f"pilot {n_weights} weights (cap 250000) | scripted floor + "
-          f"{HOF_SAMPLE} of {HOF_KEEP} hall-of-fame rivals | 180s matches",
-          flush=True)
+          f"{HOF_SAMPLE} of {HOF_KEEP} hall-of-fame rivals | 180s matches | "
+          f"fitness={args.fitness}", flush=True)
 
     if HOF_DIR.exists():
         shutil.rmtree(HOF_DIR)
@@ -108,7 +128,8 @@ def main():
                   if hof else [])
         base = 1000 + 37 * state["epoch"]
         jobs = [pool.submit(evaluate, w, paths[i % WORKERS], write, rivals,
-                            base) for i, w in enumerate(weights)]
+                            base, args.fitness)
+                for i, w in enumerate(weights)]
         out = [j.result() for j in jobs]
         best = int(np.argmax([s for s, _ in out]))
         state["record"] = out[best][1]
@@ -180,7 +201,7 @@ def main():
         "last-champion": state["champion"],
     }
     out = Path(__file__).resolve().parent.parent / "demo" / \
-        "dogfight_selfplay.onnx"
+        f"dogfight_selfplay_{args.fitness}.onnx"
     out.parent.mkdir(parents=True, exist_ok=True)
     best_name, best_pts = None, -1
     for name, w in candidates.items():
