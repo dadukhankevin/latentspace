@@ -3985,7 +3985,7 @@ a predecessor or a neighbour. Update this table when a default changes.
 | `init_decoder` warm start | related image families: warm wins every checkpoint; CA alphabet: yes. Locomotion: FAILS both quadrants | PROVEN, family-dependent |
 | `mutation_memory="shared"` (off) | tie as ported (t=-0.04); legacy evidence belongs to the legacy substrate | UNSUPPORTED here |
 | `immigrants="stall"` (off) | no effect either direction at 10 seeds | UNSUPPORTED |
-| `distill="auto"` (default: on for multi-function) | ON ITS NATIVE SUBSTRATE: 8 co-resident species 10/10 seeds, t=+16.7, -30% MSE — the largest effect in the campaign; single-function 5/10, t=-1.38 (auto keeps it off there); falsified on LoRA twice (coordinate-system mismatch, measured) | PROVEN, multi-function |
+| `distill="auto"` (default: on for multi-function; every=64, decay=0.7) | existence: 10/10, t=+16.7 vs no consolidation; tuning: every=64+decay=0.7 beats the inherited center 10/10, t=+13.2, -22%, with both decay cliffs mapped (0.15: +16%; 1.0: +49%, the double-counting failure measured on-substrate) | PROVEN and TUNED, multi-function |
 | Gradient distillation as such (not installed) | +16pt over arithmetic fold (3 seeds); transfer; the Design The Past demo | PROVEN, not shipped |
 | One-point gene crossover / whole-latent inheritance | legacy rounds 42-45 (t=5.6 image, t=5.3 curve) measured on the LEGACY substrate; not re-attributed since the redesign | LEGACY EVIDENCE |
 
@@ -4142,3 +4142,22 @@ also never swept), distill_decay (0.3, the experimental loop's constant),
 replay buffer size and composition (best-ever only; top-k per function
 and negative examples untried), and whether the decay should be
 per-individual rather than global.
+
+
+**Round thirty-six — DISTILLATION TUNED: every=64, decay=0.7 ships
+(2026-07-30).** Two sweep rounds (one factor at a time around the
+inherited center, then the trends followed to their ends and combined),
+8 species, 3 seeds per arm, then the winner confirmed at 10 paired seeds:
+
+    center (every=32, decay=0.3)   0.013432
+    every=64, decay=0.7            0.010415   10/10 seeds, t=+13.22, -22%
+
+The law both knobs express: consolidate LESS OFTEN and shrink modifiers
+LESS when you do. Both dials have mapped cliffs — decay 0.15 costs 16%,
+and decay 1.0 (no decay) is the worst configuration ever measured on this
+substrate (+49%), which gives the decay mechanism its first direct
+on-substrate evidence: the base learning a discovery while modifiers keep
+applying it at full strength double-counts it, exactly the failure the
+first combo hit on the LoRA path. Learning rate 1e-3 and 40 steps
+confirmed as-is. Defaults updated; every earlier distillation number in
+this file was measured at the old center and is now conservative.
