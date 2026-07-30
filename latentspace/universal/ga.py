@@ -223,7 +223,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           win_target=0.2, dial_step=1.15,
           mutation_memory="off", memory_drift=0.5,
           distill="auto", distill_every=32,
-          distill_steps=40, distill_decay=0.3,
+          distill_steps=40, distill_decay=0.3, distill_lr=1e-3,
           founding="per_function", founders=16,
           immigrants="off", immigrant_patience=32,
           progress=None, progress_every=None,
@@ -623,7 +623,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
             if distill_opt[0] is None:
                 trainable = [q for name, q in net.named_parameters()
                              if "down" not in name and "up" not in name]
-                distill_opt[0] = torch.optim.Adam(trainable, lr=1e-3)
+                distill_opt[0] = torch.optim.Adam(trainable,
+                                                  lr=distill_lr)
             Z = torch.as_tensor(np.stack(replay_z), device=decoder.device)
             P = torch.as_tensor(np.stack(replay_p), device=decoder.device)
             for _ in range(int(distill_steps)):
