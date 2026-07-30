@@ -4161,3 +4161,34 @@ applying it at full strength double-counts it, exactly the failure the
 first combo hit on the LoRA path. Learning rate 1e-3 and 40 steps
 confirmed as-is. Defaults updated; every earlier distillation number in
 this file was measured at the old center and is now conservative.
+
+
+**Round thirty-seven — THE MODULARITY PASS, PHASE ONE (2026-07-30,
+Daniel: "ensure that decoder choice, crossover, and other things are all
+modular like Finch... then we can get to new types of decoders").** Finch's
+design is assembly by composition: GenePools, a sequence of independent
+Layers, an Environment that runs them. In latentspace, selection /
+crossover / inheritance / mutation / speciation were already replaceable
+functions; the two welded-in stages were DECODER CHOICE (an if/elif on
+`directions`) and CONSOLIDATION (the distillation block inline in the
+loop). Both are now first-class:
+
+  - `register_substrate(name, builder)` — the substrate is a registry
+    entry like `architecture`. A builder returns (decoder, capabilities);
+    capabilities ({seeded, shared_sites}) replace every hardcoded name
+    check in the loop, so a NEW DECODER TYPE needs zero loop edits: decode
+    + get/set_params (+ training_logits for consolidation) and a
+    one-line registration.
+  - `consolidation=` — an operator object (default `Distillation(every=64,
+    steps=40, decay=0.7, lr=1e-3)`, the tuned configuration); the loop
+    asks due(epoch) / run(decoder, best_genes, best_pheno) and applies the
+    operator's decay. Alternative consolidators are now a class, not a
+    fork of ga.py.
+
+Verified bit-identical to the pre-refactor code in both regimes (single
+0.0812187418, multi 0.0802247413, epoch-for-epoch). Phase two, designed
+not built: the full Finch-style layer pipeline — the epoch itself as a
+user-composable sequence (Breed, Score, Dials, Cap, Speciate,
+Consolidate) — and with the registry in place, the first genuinely new
+substrates: hypernetwork decoders, per-modality decoders, the
+transformer's return under a substrate that can absorb it.

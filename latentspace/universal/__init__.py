@@ -35,8 +35,10 @@ opponents the new design has to beat, no longer part of the library.
 """
 from .architectures import build_mlp, register_architecture, resolve
 from .ga import (
+    Distillation,
     GAResult,
     ProblemResult,
+    register_substrate,
     coin_flip_latent_inheritance,
     fitness_shares,
     make_gaussian_mutation,
@@ -55,5 +57,6 @@ __all__ = [
     "one_point_gene_crossover",
     "coin_flip_latent_inheritance", "make_gaussian_mutation",
     "make_random_speciation",
+    "register_substrate", "Distillation",
     "register_architecture", "resolve", "build_mlp",
 ]

@@ -37,6 +37,11 @@ Every operator is a replaceable function:
   latent_inheritance — which parent's latents a child receives (whole)
   gene_mutation / latent_mutation — how each space is perturbed
   speciation         — how individuals move onto other fitness functions
+  consolidation      — how the shared decoder absorbs discoveries
+                       (default: the Distillation operator)
+  directions         — the SUBSTRATE: how latents modify the decoder;
+                       a registered choice (register_substrate), like
+                       architecture (register_architecture)
 
 Population starts from `founders` random individuals per fitness function
 (default 16 — measured 2026-07-27: every individual descends from the
@@ -57,6 +62,105 @@ import numpy as np
 import torch
 
 from .conditional import build_conditional_decoder
+
+
+# ------------------------------------------------------- decoder substrates
+#
+# The substrate — HOW an individual's latents modify the one shared decoder
+# — is a registered choice, exactly like `architecture` (Daniel, 2026-07-30:
+# "ensure that decoder choice ... modular like Finch, then we can get to new
+# types of decoders"). A builder returns (decoder, capabilities); the
+# decoder needs decode(genes, latents) [+ decode_seeded/absorb_seeded when
+# seeded], get_params/set_params, and — to support consolidation —
+# training_logits(genes) plus optionally sync_base(). Capabilities:
+#   seeded        each individual carries an integer basis seed
+#   shared_sites  all individuals share one coordinate system (lets
+#                 consolidation run on a seeded substrate)
+
+_SUBSTRATES: dict = {}
+
+
+def register_substrate(name, builder):
+    """Make `name` usable as the `directions` argument of solve()."""
+    _SUBSTRATES[name] = builder
+
+
+def _conditional_substrate(architecture, genes, output_shape, latents, device):
+    return (build_conditional_decoder(architecture, genes, output_shape,
+                                      latents, device),
+            {"seeded": False, "shared_sites": False})
+
+
+def _individual_substrate(architecture, genes, output_shape, latents, device):
+    from .conditional import attach_seeded_directions
+    decoder, _ = _conditional_substrate(architecture, genes, output_shape,
+                                        latents, device)
+    attach_seeded_directions(decoder)
+    return decoder, {"seeded": True, "shared_sites": False}
+
+
+def _sparse_substrate(shared):
+    def build(architecture, genes, output_shape, latents, device):
+        from .sparse import build_sparse_decoder
+        return (build_sparse_decoder(architecture, genes, output_shape,
+                                     latents, device),
+                {"seeded": True, "shared_sites": shared})
+    return build
+
+
+register_substrate("frozen", _conditional_substrate)
+register_substrate("evolve", _conditional_substrate)
+register_substrate("individual", _individual_substrate)
+register_substrate("sparse", _sparse_substrate(False))
+register_substrate("sparse-shared", _sparse_substrate(True))
+
+
+class Distillation:
+    """The consolidation operator (replaceable via `consolidation=`).
+    Evolution vets; this trains the base toward what the vetted champions
+    achieved, then the loop decays every modifier (the discovery lives in
+    the base now; decay 1.0 measured +49% worse — double counting). Tuned
+    10/10 at t=+13.2: every=64, decay=0.7."""
+
+    def __init__(self, every=64, steps=40, decay=0.7, lr=1e-3,
+                 buffer_cap=256):
+        self.every = int(every)
+        self.steps = int(steps)
+        self.decay = float(decay)
+        self.lr = float(lr)
+        self.buffer_cap = int(buffer_cap)
+        self.replay_z: list = []
+        self.replay_p: list = []
+        self._opt = None
+
+    def due(self, epoch):
+        return (epoch + 1) % self.every == 0
+
+    def run(self, decoder, best_genes, best_pheno):
+        for genes_f, pheno_f in zip(best_genes, best_pheno):
+            if pheno_f is not None:
+                self.replay_z.append(genes_f.copy())
+                self.replay_p.append(pheno_f.reshape(-1).copy())
+        del self.replay_z[:-self.buffer_cap]
+        del self.replay_p[:-self.buffer_cap]
+        if not self.replay_z:
+            return
+        if self._opt is None:
+            trainable = [q for name, q in decoder.net.named_parameters()
+                         if "down" not in name and "up" not in name]
+            self._opt = torch.optim.Adam(trainable, lr=self.lr)
+        Z = torch.as_tensor(np.stack(self.replay_z), device=decoder.device)
+        P = torch.as_tensor(np.stack(self.replay_p), device=decoder.device)
+        for _ in range(self.steps):
+            idx = torch.randint(0, len(Z), (min(64, len(Z)),),
+                                device=decoder.device)
+            self._opt.zero_grad()
+            out = torch.sigmoid(
+                decoder.training_logits(Z[idx])).reshape(len(idx), -1)
+            ((out - P[idx]) ** 2).mean().backward()
+            self._opt.step()
+        if hasattr(decoder, "sync_base"):
+            decoder.sync_base()
 
 
 # ---------------------------------------------------------------- results
@@ -224,6 +328,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           mutation_memory="off", memory_drift=0.5,
           distill="auto", distill_every=64,
           distill_steps=40, distill_decay=0.7, distill_lr=1e-3,
+          consolidation=None,
           founding="per_function", founders=16,
           immigrants="off", immigrant_patience=32,
           progress=None, progress_every=None,
@@ -245,16 +350,16 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         frozen 0.0177, 3/3 paired seeds — and matches frozen on
         multi-function, 10 paired seeds, t=-0.32): each individual's
         latents are values added at K weight coordinates drawn ONCE per
-        run, so every species edits the same coordinates and folds
-        compose; the shared coordinate system is also what lets the
-        sign-vote fold operate here. "frozen" (the prior default,
+        run, so every species edits the same coordinates and
+        consolidation has one coordinate system to train. "frozen" (the
+        prior default,
         low-rank gating) reproduces all benchmarks recorded before
         2026-07-27. "sparse" replaces low-rank bending
         with a per-individual SPARSE WEIGHT PATCH (Daniel, 2026-07-22):
         the individual's seed picks `latents` coordinates of the decoder's
-        weight vector and its latents are the values added there, so folds
-        can reach any weight instead of being trapped in a frozen random
-        subspace forever. Locations inherit with the latents; a
+        weight vector and its latents are the values added there, so
+        edits can reach any weight instead of being trapped in a frozen
+        random subspace forever. Locations inherit with the latents; a
         `fresh_basis_rate` fraction of children draw new ones. "evolve" trials perturbations of the
         shared low-rank vocabulary as a (1+1) evolution strategy —
         FALSIFIED as built (apple, 171k evals: 0.01268 vs frozen 0.01222;
@@ -263,8 +368,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         population-mean vote over 32 co-adapted individuals — it froze
         itself and paid a 12% trial tax). Kept for iteration; the
         designed refinements are one-direction-at-a-time proposals, a
-        share-weighted acceptance signal, and trialing right after folds
-        when the vocabulary is least load-bearing.
+        share-weighted acceptance signal, and trialing right after
+        consolidation when the vocabulary is least load-bearing.
     mutation_memory: "shared" pools every child's birth delta SIGNED BY
         ITS FITNESS CHANGE — failures included — into one Adam-style
         accumulator per space (genes and latents separately, never mixed),
@@ -315,16 +420,11 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         device = "mps" if torch.backends.mps.is_available() else "cpu"
     rng = np.random.default_rng(seed)
     torch.manual_seed(int(rng.integers(0, 2 ** 31)))
-    if directions in ("sparse", "sparse-shared"):
-        from .sparse import build_sparse_decoder
-        decoder = build_sparse_decoder(
-            architecture, genes, output_shape, latents, device)
-    else:
-        decoder = build_conditional_decoder(
-            architecture, genes, output_shape, latents, device)
-    if directions == "individual":
-        from .conditional import attach_seeded_directions
-        attach_seeded_directions(decoder)
+    if directions not in _SUBSTRATES:
+        raise ValueError(f"unknown substrate {directions!r}; "
+                         f"registered: {sorted(_SUBSTRATES)}")
+    decoder, caps = _SUBSTRATES[directions](
+        architecture, genes, output_shape, latents, device)
     if init_decoder is not None:
         # Warm start: the shared decoder begins as a previous run's, so a
         # new problem inherits the family's structure instead of starting
@@ -401,13 +501,13 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         pop_fn = np.zeros(n0, dtype=np.int64)
     pop_genes = rng.standard_normal((n0, genes)).astype(np.float32)
     pop_latents = rng.standard_normal((n0, latents)).astype(np.float32)
-    seeded = directions in ("individual", "sparse", "sparse-shared")
+    seeded = bool(caps.get("seeded"))
     # "sparse-shared" (round seven's designed arm): free placement and full
     # reach, but ONE run-level site set every individual shares — so
     # species' folds land in the same coordinates and compose instead of
     # colliding, and population-combining fold rules (sign vote, mean)
     # are expressible because coordinates mean the same thing for everyone.
-    shared_sites = directions == "sparse-shared"
+    shared_sites = bool(caps.get("shared_sites"))
     if shared_sites:
         pop_basis = np.full(n0, int(rng.integers(0, 2 ** 31)), dtype=np.int64)
         fresh_basis_rate = 0.0
@@ -440,9 +540,9 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         mem[key] = [0.9 * m + 0.1 * g, 0.999 * v + 0.001 * g * g,
                     steps + 1, df_scale]
 
-    replay_z: list[np.ndarray] = []
-    replay_p: list[np.ndarray] = []
-    distill_opt: list = [None]
+    if consolidation is None:
+        consolidation = Distillation(every=distill_every, steps=distill_steps,
+                                     decay=distill_decay, lr=distill_lr)
     # Direction evolution ((1+1)-ES on the shared low-rank vocabulary, with
     # an Adam memory over ACCEPTED changes so proposals drift along what
     # has historically worked — the round-50 pattern one level deeper).
@@ -610,37 +710,13 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         # single-function t=-1.38) and only where all individuals share
         # one coordinate system.
         distill_on = (distill == "on" or (distill == "auto" and n_fns >= 2))
-        consolidate = (distill_on and (epoch + 1) % int(distill_every) == 0
-                       and ((not seeded) or shared_sites)
-                       and hasattr(decoder, "training_logits"))
-        if consolidate:
-            for f in range(n_fns):
-                if best_pheno[f] is not None:
-                    replay_z.append(best_genes[f].copy())
-                    replay_p.append(best_pheno[f].reshape(-1).copy())
-            del replay_z[:-256], replay_p[:-256]
-            net = decoder.net
-            if distill_opt[0] is None:
-                trainable = [q for name, q in net.named_parameters()
-                             if "down" not in name and "up" not in name]
-                distill_opt[0] = torch.optim.Adam(trainable,
-                                                  lr=distill_lr)
-            Z = torch.as_tensor(np.stack(replay_z), device=decoder.device)
-            P = torch.as_tensor(np.stack(replay_p), device=decoder.device)
-            for _ in range(int(distill_steps)):
-                idx = torch.randint(0, len(Z), (min(64, len(Z)),),
-                                    device=decoder.device)
-                distill_opt[0].zero_grad()
-                out = torch.sigmoid(
-                    decoder.training_logits(Z[idx])).reshape(len(idx), -1)
-                ((out - P[idx]) ** 2).mean().backward()
-                distill_opt[0].step()
-            if hasattr(decoder, "sync_base"):
-                decoder.sync_base()      # sparse decode reads the flat base
-            # The absorbed discovery is now in the base, so every bending
-            # shrinks toward zero; omitting this decay applied discoveries
-            # twice and measured t=-2.05.
-            pop_latents *= float(distill_decay)
+        if (distill_on and consolidation.due(epoch)
+                and ((not seeded) or shared_sites)
+                and hasattr(decoder, "training_logits")):
+            consolidation.run(decoder, best_genes, best_pheno)
+            # The absorbed discoveries live in the base now, so every
+            # bending shrinks; decay 1.0 (no shrink) measured +49% worse.
+            pop_latents *= float(consolidation.decay)
             pop_score = score(pop_genes, pop_latents, pop_fn,
                               pop_basis if seeded else None)
 

@@ -119,8 +119,14 @@ solve(fitness, output_shape=(64, 64), architecture="my-arch", epochs=2_000)
 ```
 
 `architecture="auto"` picks a convolutional decoder for image shapes and a
-generic network otherwise; both carry the shared low-rank directions that
-latents gate. One measured trap: every decoder is born emitting a
+generic network otherwise. The SUBSTRATE — how latents modify the decoder —
+is registered the same way (`register_substrate`), so new decoder types
+plug in without touching the loop: a builder returns the decoder plus its
+capabilities, and `directions="your-substrate"` selects it. Consolidation
+is likewise an operator (`consolidation=Distillation(...)` by default),
+replaceable like every other stage — the same assembly-by-composition
+design as Finch, with the thesis (genes + latents, one decoder, species
+by fitness function) as the fixed frame the pieces plug into. One measured trap: every decoder is born emitting a
 near-constant phenotype. On images that is a good prior (widening it loses,
 3/3 paired seeds); when the phenotype is GEOMETRY — coordinates, a weight
 vector, anything whose meaning lives in the spread of its values — a

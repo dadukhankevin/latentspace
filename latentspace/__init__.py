@@ -2,7 +2,7 @@
 
 The solver (`latentspace.universal.solve`) evolves individuals that are
 genes plus latents read by ONE shared decoder network — never the
-phenotype — one species per fitness function you provide, and folds discoveries into the decoder over time. Change the
+phenotype — one species per fitness function you provide, and consolidates discoveries into the decoder by distillation over time. Change the
 fitness function(s), the output shape, and (optionally) the decoder
 architecture; nothing else changes. See FINDINGS.md for the benchmark
 campaign behind this design.
