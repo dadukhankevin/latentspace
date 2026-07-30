@@ -3981,7 +3981,7 @@ a predecessor or a neighbour. Update this table when a default changes.
 | Win-rate mutation dials | legacy round 31 records; redesign parity runs. KNOWN LIMIT: collapse on plateau objectives (measured; founders is the mitigation) | PROVEN with boundary |
 | `directions="sparse-shared"` (default substrate) | pre-registered rule met: apple win kept 3/3 (0.0113 vs 0.0177), multi-function tie at 10 seeds (t=-0.32) | PROVEN |
 | Sign-vote fold selection (default) | 30 paired seeds: mean/median tie vs champion, run-to-run sd halved | PROVEN — but only RELATIVE TO other fold rules, GIVEN folding |
-| **The arithmetic fold itself (`fold="on"`)** | on top of distillation: t=-0.10, exactly nothing (round 32); alone vs off: ns (round 23). The fold EVENT is load-bearing as distillation's schedule; the arithmetic STEP has no measured contribution anywhere | **STEP: no evidence. EVENT: distillation's clock** |
+| **The arithmetic fold itself (`fold="on"`)** | searched everywhere it could hide: on top of distillation t=-0.10 (round 32); single-function at 25 paired seeds on the current substrate t=-1.26, NOMINALLY NEGATIVE, fold-off also more seed-stable; long budget (9000 epochs) t=+0.41, noise; LoRA-era ns (round 23). The fold EVENT remains load-bearing as distillation's schedule | **STEP: no configuration found where it helps. EVENT: distillation's clock** |
 | `init_decoder` warm start | related image families: warm wins every checkpoint; CA alphabet: yes. Locomotion: FAILS both quadrants | PROVEN, family-dependent |
 | `mutation_memory="shared"` (off) | tie as ported (t=-0.04); legacy evidence belongs to the legacy substrate | UNSUPPORTED here |
 | `immigrants="stall"` (off) | no effect either direction at 10 seeds | UNSUPPORTED |
@@ -4081,3 +4081,37 @@ different sharing mechanism than weight-space distillation.
 Also recorded: the specialists' champions were not saved (only the
 generalist's), so whether the specialists learned their own niches is
 unknown — save every species' champion next time.
+
+
+**Round thirty-four — THE ARITHMETIC FOLD'S LAST TWO HIDING PLACES,
+SEARCHED (2026-07-30, prompted by Daniel: "any shot adam fold is better
+than non-folding?").** The two configurations no ablation had covered:
+single-function on the current sparse-shared substrate (where distillation
+auto-disables, so the arithmetic step is the only consolidation), and long
+budgets (where a compounding effect would live). Apple photo, paired
+seeds:
+
+    SHORT, 25 paired seeds, 1500 epochs:
+        fold-on  0.012145 (sd 0.00261)
+        fold-off 0.011527 (sd 0.00188)   fold wins 11/25, t=-1.26
+    LONG, 3 paired seeds, 9000 epochs:
+        fold-on  0.006937   fold-off 0.007147   2/3, t=+0.41
+
+The July-27 6/10 directional lean was a small-sample artifact of the old
+substrate: at 25 seeds on the current one the direction is mildly AGAINST
+folding, the off arm is more seed-stable, and fold-on pays ~6% extra
+evaluations in post-fold re-scores for it. The long-budget arm — the
+compounding story's home turf, never previously tested — is noise.
+
+Registered predictions, scored: "even odds short" — outcome mildly
+against, fair. "Better than even long" — wrong.
+
+END STATE. The arithmetic step has now been searched for at short and
+long budgets, both substrates, alone and alongside distillation, across
+~70 paired runs, and no configuration was found where it helps.
+RECOMMENDATION (Daniel's call — the fold is his spec element):
+`fold="auto"` — events on for multi-function runs, where they are
+distillation's proven schedule; off for single-function runs, where no
+consolidation mechanism has ever shown direct evidence and the events tax
+6% of the budget in re-scores. The sign vote stays as the step rule
+wherever events fire (variance result, harmless step).
