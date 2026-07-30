@@ -3886,3 +3886,14 @@ window blocks at exit, so the run's own verdict sat in an unflushed
 buffer for nine hours while the process showed RUNNING. The saved
 artifact was written regardless. Flush progress prints; never end a
 long headless-capable run behind plt.show(block=True).
+
+
+*Round twenty-eight, closing detail.* The buffered judgment verdict
+surfaced once the window closed: best-ever (the epoch-48 pilot) scored
+13 points on the fixed suite; the LAST champion scored 43 and was saved.
+Called in advance as the test of whether self-play kept adding anything
+after the field matured: it did — the best-ever fitness froze at epoch 48
+while the population improved 3.3x over the remaining ninety epochs,
+invisibly, because the hardening opposition ate the gains. Under
+co-evolution, a flat best-ever curve measures the ARMS RACE, not the
+pilot.
