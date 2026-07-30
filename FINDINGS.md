@@ -3929,3 +3929,34 @@ iteration; the judgment suite showed 3.3x improvement was still accruing
 when it stopped); and league play — seeding the hall of fame with our own
 previous submissions so the archive starts diverse instead of growing
 from scratch.
+
+
+**Round thirty — PURE MAXIMIN SELF-PLAY, FALSIFIED AS BUILT (2026-07-30,
+Daniel's min() proposal).** Fitness = minimum over opponent groups instead
+of the mean, same harness, same budget. The saved pilot is the worst this
+campaign has produced: 2W/0D/158L on the scripted held-out (6 tournament
+points; the mean-fitness pilot scored 82 and the pre-self-play pilot 194),
+the chaser hole intact (1W/39L), and 0W/0D/80L head-to-head against the
+ELO-583 pilot. Not weaker — nonfunctional.
+
+The mechanism, visible in hindsight in the trace: under maximin, once ANY
+opponent group is uniformly hard for the whole population, every
+individual's fitness becomes the same low number — min() DESTROYS
+SELECTION VARIANCE exactly where the mean preserves it. The hall of fame
+guarantees this happens: the moment one decent champion enters the
+archive, that champion is the binding group for everyone, everyone scores
+alike against it, ranking collapses, and the remaining ninety epochs are
+drift. The frozen best (+0.810, set early while the field was still soft)
+and the bouncing 3W-8W champion records were the signature. This is
+FINDINGS sixteen's plateau failure — no gradient of improvement to climb —
+manufactured by the fitness AGGREGATOR rather than by the problem.
+
+So the average pays specialists and abandons matchups (round twenty-eight)
+and the pure min pays nobody once the field hardens. The floor-as-
+constraint idea survives; its implementation cannot be a bare min over a
+co-evolving field. Designed, untested candidates that keep gradient while
+keeping the floor: min + a small mean term; CVaR (mean of the worst k
+groups); or maximin over the SCRIPTED groups only with the hall of fame
+kept as a mean term (the floor is fixed opponents, so their groups retain
+variance). One measured law from the pair of runs: the aggregator is not
+bookkeeping — it decides what kind of pilot exists at all.
