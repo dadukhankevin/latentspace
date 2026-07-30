@@ -3988,6 +3988,7 @@ a predecessor or a neighbour. Update this table when a default changes.
 | `distill="auto"` (default: on for multi-function; every=64, decay=0.7) | existence: 10/10, t=+16.7 vs no consolidation; tuning: every=64+decay=0.7 beats the inherited center 10/10, t=+13.2, -22%, with both decay cliffs mapped (0.15: +16%; 1.0: +49%, the double-counting failure measured on-substrate) | PROVEN and TUNED, multi-function |
 | Gradient distillation as such (not installed) | +16pt over arithmetic fold (3 seeds); transfer; the Design The Past demo | PROVEN, not shipped |
 | One-point gene crossover / whole-latent inheritance | legacy rounds 42-45 (t=5.6 image, t=5.3 curve) measured on the LEGACY substrate; not re-attributed since the redesign | LEGACY EVIDENCE |
+| `AgenticGA` ask/tell engine (agentic substrate scaffolding) | end-to-end smoke only (round 38): loop runs, audit reproduces scores, holdout catches train-only gains. NO control arm yet — one-agent-iterating at matched agent-call budget is the pre-registered question | SCAFFOLDING — no performance claim |
 
 
 **Round thirty-one — THE SLOT TEST: gradient consolidation, proven in the
@@ -4192,3 +4193,86 @@ user-composable sequence (Breed, Score, Dials, Cap, Speciate,
 Consolidate) — and with the registry in place, the first genuinely new
 substrates: hypernetwork decoders, per-modality decoders, the
 transformer's return under a substrate that can absorb it.
+
+## Round thirty-eight — the agentic substrate: the decoder becomes an agent (2026-07-30)
+
+Daniel's proposal, following directly from the modularity work: "make an
+agentic decoder harness that lets Claude Code or Codex operate as the
+decoder... individuals are various iterations on the methodology, so
+'methodology BUT <some way it's different>'." The mapping onto the
+library's frame: genes = a text VARIATION on ONE shared base playbook
+(the one-decoder invariant, in text); decode = an agent follows
+base+variation to produce an artifact; fitness = a canonical scorer
+script run on the artifact; consolidation = a consolidator agent edits
+the base so an empty-variation agent would reproduce each task's audited
+best-ever, then every survivor REWRITES its variation (Daniel's rule:
+take the absorbed idea to the next level, or stand pat — an emptied
+variation would be a clone of the base, so text-decay must deepen, not
+shrink). Two deliberate departures from the tensor loop, both Daniel's:
+no automatic re-score after consolidation (staleness is tracked instead;
+re-score as needed) and variations may contradict the base only through
+mutation, flagged — contradictors consistently beating compliants is the
+one signal that a consolidation hurt the base.
+
+Because every evaluation is a full agent run, evaluation moved outside
+the loop: `latentspace/universal/agentic.py` ships `AgenticGA`, an
+ask/tell engine carrying the substrate-free laws unchanged (fitness
+shares, species breeding with 5% outcross, cap culling with extinction,
+refounding, per-task best-ever archives, consolidation cadence,
+deterministic under a seed, JSON save/load). Scoring, selection, and
+what feeds consolidation are code; only decode / mutate / merge /
+consolidate / audit-judgment are agents. The working harness is the
+`agentic-ga` skill (.claude/skills/agentic-ga/); the testbed is
+benchmarks/agentic/ — heuristic synthesis for online bin packing
+(score = lower-bound/bins on five fixed seeds; plain best-fit = 0.9417)
+and greedy TSP construction (score = nearest-neighbor-length/tour-length;
+NN = 1.0), each with disjoint held-out audit seeds.
+
+**The smoke run** (runs/smoke1, committed: two tasks, two founders each,
+one mutation round of four, one consolidation, ~10 agent runs, ~470k
+subagent tokens):
+
+    binpack founders   0.9417  0.9417   (= best-fit exactly, both)
+    tsp founders       1.0443  1.0443   (same idea, same weight, both)
+    binpack mutations  0.9455  0.9494  0.9494
+    tsp mutation       1.0458
+    audit (holdout)    tsp 1.0232 TRANSFERS; binpack 0.93699 = best-fit
+                       holdout exactly — the whole train gain was tuned
+                       thresholds, zero transfer
+    consolidation      base v1 absorbed structure, refused the overfit
+                       constants; 7/8 survivors rewrote genuinely deeper
+                       (cluster-depth isolation, weight schedules, live
+                       dead-thresholds, depth-two rollout, annealed tiers)
+
+What the smoke actually taught, in order of importance:
+
+1. **Founder coverage does not transfer to agent-space.** Both tsp
+   founders independently produced the SAME mechanism with the SAME
+   tuned weight (bit-identical 1.0442762539183397); both binpack
+   founders landed on the same dead-space idea and both collapsed to
+   best-fit's exact score. Independent random tensor founders are
+   independent samples; independent agent founders are correlated draws
+   from one model. founders=16 bought coverage in round 22; here it
+   would buy ~2 ideas. Founder jobs need ASSIGNED orthogonal angles.
+2. **Audit-on-influence earned its keep on day one.** Reported scores
+   reproduced exactly (no misreporting), but holdout caught the binpack
+   best-ever's gain as pure train-tuning BEFORE it fed consolidation,
+   and the consolidator was told — so the base absorbed the tier
+   structure and explicitly recorded "constants tuned on train do not
+   transfer" instead of enshrining 0.07/0.13.
+3. Selection still worked through quantized ties (binpack scores are
+   integer-bins per instance, so ties are common by construction — the
+   ties-count-as-successes rule will matter here too).
+4. One mutation round improved both tasks (binpack 0.9417 -> 0.9494
+   train; tsp 1.0443 -> 1.0458 train / 1.0232 holdout).
+
+**No performance claim is made.** The loop runs; that is all round
+thirty-eight asserts (the ledger row says the same). The pre-registered
+next questions: (a) the control arm — ONE agent iterating alone on each
+task at the same total agent-call budget; the library's own history
+predicts the shared base only pays on multi-task substrates, so (b) the
+transfer question — does binpack's tier lesson or the shared
+"price the greedy rule's future failure mode" prior actually help a
+THIRD task's founders under base v1 vs v0? Those two runs, at success-
+rate methodology (agent decode is nondeterministic; paired seeds do not
+exist here), are what could turn scaffolding into a mechanism row.

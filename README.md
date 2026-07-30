@@ -134,6 +134,44 @@ constant output is a degenerate solution and evolution has nothing to
 select on. Register an architecture with its final layer scaled up (~10x)
 for such problems; `benchmarks/probe_walker.py` is the worked example.
 
+## The agentic substrate (ask/tell)
+
+The most extreme decoder the modular frame admits: **an agent**. Genes
+become a text methodology — one shared **base playbook** plus a
+per-individual variation clause ("the base, BUT <difference>") — the
+decoder is an agent that follows base+variation to produce an artifact,
+and fitness is a canonical scorer script run on that artifact. Because
+each evaluation is a full agent run, evaluation moves outside the loop:
+`AgenticGA` is an ask/tell engine that owns the same laws as `solve()`
+(fitness shares, species breeding, cap culling with extinction,
+best-ever archives, consolidation cadence) while an orchestrator spawns
+the agents.
+
+```python
+from latentspace.universal import AgenticGA
+
+ga = AgenticGA(tasks=["binpack", "tsp"], seed=0)
+for job in ga.ask():          # found / mutate / crossover jobs
+    ...run an agent -> (variation, score, artifact)...
+    ga.tell(job["job_id"], variation, score, artifact=path)
+```
+
+Consolidation is the library's distillation translated to text: a
+consolidator agent edits the base playbook so an agent following the
+base with an *empty* variation would reproduce each task's best-ever
+win, then every survivor rewrites its variation — pushing an absorbed
+idea further, or standing pat (an emptied variation would be a clone of
+the base; in text, decay-to-zero collapses diversity instead of
+preventing double-counting). Scores are not automatically refreshed
+after a base edit; the engine marks them stale and the orchestrator
+re-scores as needed. The working harness — conduct rules, prompts, audit
+procedure — is the `agentic-ga` skill in
+[.claude/skills/agentic-ga/](.claude/skills/agentic-ga/SKILL.md); the
+testbed (heuristic synthesis for bin packing and TSP tour construction,
+deterministic scorers with held-out audit seeds) is in
+[benchmarks/agentic/](benchmarks/agentic/). Scaffolding-stage: the loop
+runs end to end; no performance claims yet.
+
 ## Tuning (all measured, all replaceable)
 
 ```python

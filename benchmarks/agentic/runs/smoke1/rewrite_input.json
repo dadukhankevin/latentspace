@@ -1,0 +1,50 @@
+[
+ {
+  "id": "i0000",
+  "task": "tsp",
+  "score": 1.0442762539183397,
+  "variation": "The base methodology, BUT the greedy choice prices strandedness instead of ranking candidates by proximity alone: for every unvisited city compute an isolation term \u2014 its distance to the nearest OTHER unvisited city \u2014 and pick the city minimizing (distance-to-current \u2212 w \u00b7 isolation). Lonely outliers are thereby collected in passing while the tour is nearby, rather than left behind to force long end-of-tour detours, which is nearest-neighbor's main failure mode. The single weight w is the only tuning knob and is tuned per the base loop: one change at a time, keep the best canonical score, stop after two consecutive non-improvements."
+ },
+ {
+  "id": "i0001",
+  "task": "tsp",
+  "score": 1.0442762539183397,
+  "variation": "The base methodology, BUT rank candidate cities by a distance-plus-stranding score instead of raw distance: from the current city, each unvisited candidate c is scored d(current, c) - lambda*iso(c), where iso(c) is c's isolation - the distance from c to its nearest OTHER unvisited city. Positive lambda grabs isolated cities while we are already near them, avoiding expensive detours later; negative lambda recovers a look-ahead bias toward cities whose onward hop is cheap. lambda is the single tunable: sweep it over a coarse signed grid using the canonical train scorer, keep the best value, and leave every other step of the base methodology unchanged."
+ },
+ {
+  "id": "i0002",
+  "task": "binpack",
+  "score": 0.9417321645639388,
+  "variation": "The base methodology, BUT design the priority explicitly around the item-size distribution the scorer generates (uniform on [0.1, 0.7]) rather than a distribution-agnostic packing rule: classify each bin's prospective leftover capacity as perfect (~0), dead (below the 0.1 minimum item size, so no future item can ever use it), or live, and shape the score so near-perfect fits are strongly preferred, dead gaps are penalized in proportion to the space they strand, and live leftovers fall back to best-fit."
+ },
+ {
+  "id": "i0003",
+  "task": "binpack",
+  "score": 0.9417321645639388,
+  "variation": "The base methodology, BUT instead of the single most obvious angle (pure best-fit tightness), design the priority around the known item-size distribution: items are uniform on (0.1, 0.7), so any residual capacity in (0, 0.1) is permanently unfillable dead space. Score each feasible bin by the usefulness of the residual the placement would leave, penalizing placements in proportion to the dead capacity they lock in, and calibrate the strength of that distribution-derived penalty empirically rather than assuming tighter is always better."
+ },
+ {
+  "id": "i0004",
+  "task": "tsp",
+  "score": 1.0458037648565088,
+  "variation": "The base methodology with the parent's strandedness pricing, BUT isolation is measured at pair depth: a candidate's isolation term is the mean of its distances to its TWO nearest other unvisited cities, not the single nearest. A remote pair of cities scores near-zero isolation under the single-nearest measure - each has the other close by - yet the pair as a whole is stranded and still forces nearest-neighbor's end-of-tour detour; averaging in the second-nearest distance exposes pair-level loneliness so such pairs are also collected in passing. Everything else follows the parent: pick the city minimizing (distance-to-current - w*isolation), w is the only tuning knob, tuned per the base loop - one change at a time, keep the best canonical score, stop after two consecutive non-improvements."
+ },
+ {
+  "id": "i0005",
+  "task": "binpack",
+  "score": 0.9454968704462917,
+  "variation": "The base methodology, BUT where the parent softly penalized dead space in proportion to the capacity it locks in, make the distribution-derived distinction lexicographic instead of proportional: since items are uniform on (0.1, 0.7), classify each feasible placement by the residual it would leave - near-perfect close (residual <= tau), dead (residual in (tau, 0.1), permanently unfillable), or usable (residual >= 0.1) - and let tier strictly dominate: any near-perfect close beats any usable placement, which beats any dead placement, regardless of tightness; best-fit tightness only orders bins within a tier. The single empirically calibrated constant is tau, the near-perfect threshold, swept on the canonical training score."
+ },
+ {
+  "id": "i0006",
+  "task": "binpack",
+  "score": 0.9494084350721421,
+  "variation": "The base methodology, BUT replace the parent's proportional dead-space score-shaping with a hard three-tier band around the scorer's 0.1 minimum item size, with the avoid region extended ABOVE that minimum: (1) if a bin's prospective leftover is under ~0.07, treat the bin as closed and take the tightest such fit - tiny stranded gaps are a cheap price for closing a bin; (2) hard-avoid leftovers in the nearly-dead band [0.072, 0.13), which either strand close to the maximum unusable space (below 0.1) or leave a sliver only near-minimum items in a razor-thin window can use; (3) otherwise plain best-fit. Tiers are separated by large score offsets so the band actually flips placements instead of collapsing to best-fit, while within-tier order stays tightest-first so forced choices remain sensible."
+ },
+ {
+  "id": "i0007",
+  "task": "binpack",
+  "score": 0.9494084350721421,
+  "variation": "The base methodology, BUT replace per-bin leftover shaping with a portfolio rule over the whole set of open bins: keep the multiset of remaining capacities extreme rather than middling. Tight placements (prospective leftover under the 0.1 minimum item size) are scored by best-fit as usual; placements leaving a live leftover are scored in REVERSE - roomier survivors beat middling ones (score -0.3 + 0.2*leftover) - and any placement into the bin currently holding the maximum remaining capacity pays a flat 0.2 penalty, reserving the portfolio's largest slot for items nothing else can take. The one deliberate change: the score is population-aware and non-monotone in leftover (inverted on the live branch), instead of any refinement of per-bin leftover classes."
+ }
+]

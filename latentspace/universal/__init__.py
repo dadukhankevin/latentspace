@@ -33,6 +33,7 @@ single-fitness records, the champion-per-problem population, distill, and
 the CMA-ES baseline) live in benchmarks/legacy_engines/ — benchmark
 opponents the new design has to beat, no longer part of the library.
 """
+from .agentic import AgenticGA
 from .architectures import build_mlp, register_architecture, resolve
 from .ga import (
     Distillation,
@@ -59,4 +60,5 @@ __all__ = [
     "make_random_speciation",
     "register_substrate", "Distillation",
     "register_architecture", "resolve", "build_mlp",
+    "AgenticGA",
 ]
