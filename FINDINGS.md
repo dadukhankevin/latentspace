@@ -3849,3 +3849,40 @@ mechanism change and Daniel's call.
 Standing lesson, the sharpest of the campaign: an internal benchmark can
 be beaten thoroughly and mean nothing. Every other result in this file is
 graded by us against opponents we chose.
+
+
+**Round twenty-eight — SELF-PLAY WRAP-UP: a non-transitive triangle,
+measured in the wild (2026-07-30).** The self-play run (140 epochs, 12-deep
+hall of fame, rotating spawns, 180s matches, 58,377-weight pilot) finished
+with the arms-race signature intact: ninety epochs oscillating around
+break-even against its own hardening history. The three pilots now in hand
+form a rock-paper-scissors triangle:
+
+    vs the four scripts (180s, 40 unseen spawns each):
+        previous pilot   53W/35D/72L   194 pts   33.1%
+        self-play pilot  14W/54D/92L    82 pts    8.8%
+    head-to-head, 80 matches, sides swapped:
+        SELF-PLAY BEATS THE PREVIOUS PILOT 56W/9D/15L (70%)
+
+The pilot that dominates the scripts loses 70% of matches to the pilot
+that scores 8.8% against them. Most extreme cell: self-play goes 1W/39L
+against CHASER, the weakest script — while crushing the pilot that beats
+chaser. Self-play specialized the population against network-like rivals
+at the cost of anti-script competence, DESPITE scripts being 16 of every
+25 fitness matches: the aggregate fitness let chaser losses be paid for
+with hall-of-fame wins. If a "scripted floor" is meant to be a floor, it
+has to be a CONSTRAINT (e.g. min over opponent groups), not a term in an
+average — designed, not built.
+
+Which to submit is a bet on what the leaderboard field resembles. The
+previous pilot already measured there: 0 wins in 60, ELO -200 — scripts
+told us 33% and meant nothing. The self-play pilot beats that pilot 70%
+and its opposition was evolving neural pilots, which is what the
+leaderboard is. The risk is the chaser hole: any entrant playing simple
+relentless pursuit farms it. Validate: PASS, 58,377/250,000 params.
+
+Also recorded: the judgment-suite prints lacked flush and the --live
+window blocks at exit, so the run's own verdict sat in an unflushed
+buffer for nine hours while the process showed RUNNING. The saved
+artifact was written regardless. Flush progress prints; never end a
+long headless-capable run behind plt.show(block=True).
