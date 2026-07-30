@@ -119,6 +119,21 @@ class SparsePatchDecoder:
 
     # ---------------------------------------------------------------- state
 
+    def training_logits(self, z: torch.Tensor) -> torch.Tensor:
+        """Pre-sigmoid BASE output (no patch), with gradients — the
+        distillation surface: the base learns to reach unaided what a
+        champion's patch reached. This is exactly the experimental
+        DistillGenerator's base_decode, in the library."""
+        for p in self.net.parameters():
+            p.requires_grad_(True)
+        return self.net(z)
+
+    def sync_base(self) -> None:
+        """After gradient steps on `net`, the flat base vector — which is
+        what decode/absorb actually read — must be rebuilt from it."""
+        self.base = nn.utils.parameters_to_vector(
+            self.net.parameters()).detach().clone()
+
     def get_params(self) -> np.ndarray:
         return self.base.detach().cpu().numpy().astype(np.float32)
 

@@ -823,7 +823,7 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                 pop_latents -= step          # every phenotype preserved
             else:
                 pop_latents[donor] -= step
-            if distill == "on" and not seeded \
+            if distill == "on" and ((not seeded) or shared_sites) \
                     and hasattr(decoder, "training_logits"):
                 for f in range(n_fns):
                     if best_pheno[f] is not None:
@@ -845,6 +845,8 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                         decoder.training_logits(Z[idx])).reshape(len(idx), -1)
                     ((out - P[idx]) ** 2).mean().backward()
                     distill_opt[0].step()
+                if hasattr(decoder, "sync_base"):
+                    decoder.sync_base()      # sparse decode reads the flat base
                 # The absorbed discovery is now in the base, so every
                 # bending shrinks toward zero — the distill analogue of the
                 # arithmetic fold subtracting its step from the donor. The
