@@ -3897,3 +3897,35 @@ while the population improved 3.3x over the remaining ninety epochs,
 invisibly, because the hardening opposition ate the gains. Under
 co-evolution, a flat best-ever curve measures the ARMS RACE, not the
 pilot.
+
+
+**Round twenty-nine — SECOND EXTERNAL VERDICT: ELO -200 -> 583
+(2026-07-30).** Daniel submitted the self-play pilot. Sixty matches
+against other entrants: 9 elimination wins, 0 HP wins, 5 draws, 31 HP
+losses, 15 elimination losses. ELO 583, against the previous pilot's
+-200 and 0 wins in 60.
+
+The local head-to-head predicted the direction (self-play beats the old
+pilot 70/30) and the leaderboard confirmed it — the first time in this
+campaign a local Dogfight measurement transferred. What transferred was
+the OPPOSITION DISTRIBUTION: training against evolving neural pilots
+generalized to other people's neural pilots, where training against
+scripts did not. The scripted suite scored the two pilots 194 vs 82 —
+backwards. Both external data points now say the same thing: you become
+what you train against.
+
+Profile of the new pilot in the wild: every win is an elimination
+(aggressive, as bred), and the modal loss is a narrow HP loss with 2-5
+HP remaining at full time — it fights, survives, and loses on points.
+That is a pilot short on finishing skill, not on survival. Fifteen
+percent wins is still bottom-tier against the leaderboard's 57-86%
+leaders; one iteration of self-play closed the gap from zero, not to
+the front.
+
+The obvious levers, in order of expected value: the floor-as-constraint
+fix (round twenty-eight's design note — the chaser hole shipped and it
+cost HP losses here too); a longer arms race (140 epochs was one
+iteration; the judgment suite showed 3.3x improvement was still accruing
+when it stopped); and league play — seeding the hall of fame with our own
+previous submissions so the archive starts diverse instead of growing
+from scratch.
