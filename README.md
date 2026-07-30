@@ -53,16 +53,20 @@ BREEDING   Parents are drawn by share; the partner comes from the SAME
            is not half as useful). Genes and latents mutate through
            separate operators with independent self-tuning step dials.
 
-FOLD       Evolution computes update directions: every 32 epochs the
-           population votes, coordinate by coordinate and weighted by
-           fitness share, on which DIRECTION each decoder dimension
-           should move — a majority vote that a single unrepresentative
-           individual cannot drag (measured: same mean as absorbing the
-           champion's latents, half the run-to-run spread). The step
-           passes through an Adam accumulator and is applied DIRECTLY
-           into the shared decoder's weights — exact arithmetic, no
-           training, no gradients of the fitness function. The decoder
-           itself learns what everyone keeps discovering.
+DISTILL    Evolution vets; gradients consolidate. On multi-function
+           runs, every 32 epochs the shared decoder's base is trained —
+           a few Adam steps, replay buffer against forgetting — to
+           reproduce each function's best-ever phenotype from its genes
+           alone; every per-individual modifier then decays, because the
+           discovery now lives in the base. The fitness function is
+           never differentiated: gradients flow only through the
+           decoder's own input-to-output map, toward targets evolution
+           already scored. Measured: 10/10 paired seeds, t=+16.7, -30%
+           MSE on 8 co-resident problems. (Its predecessor — an
+           arithmetic fold that applied bendings directly, no training —
+           was searched for at every budget and substrate and never
+           helped; it is gone.) The decoder itself learns what everyone
+           keeps discovering.
 ```
 
 No phase ever touches a phenotype, no operator treats the genes and
@@ -137,9 +141,8 @@ solve(
                               #   of the space; pass 2 for pre-2026-07-27
                               #   benchmark reproduction
     population_cap=32,        # raised automatically to hold all founders
-    fold_every=32,            # Adam-fold cadence; fold_optimizer="raw"/"off"
-    fold_selection=...,       # default sign-vote; champion/rank variants
-                              #   in ga.py
+    distill_every=32,         # consolidation cadence (multi-function)
+    distill="auto",           # on for 2+ functions; "off"/"on" to override
     init_decoder=...,         # warm-start from a prior run's result.decoder
     selection=...,            # swap any operator; see ga.py for signatures
 )

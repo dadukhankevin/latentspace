@@ -3981,7 +3981,7 @@ a predecessor or a neighbour. Update this table when a default changes.
 | Win-rate mutation dials | legacy round 31 records; redesign parity runs. KNOWN LIMIT: collapse on plateau objectives (measured; founders is the mitigation) | PROVEN with boundary |
 | `directions="sparse-shared"` (default substrate) | pre-registered rule met: apple win kept 3/3 (0.0113 vs 0.0177), multi-function tie at 10 seeds (t=-0.32) | PROVEN |
 | Sign-vote fold selection (default) | 30 paired seeds: mean/median tie vs champion, run-to-run sd halved | PROVEN — but only RELATIVE TO other fold rules, GIVEN folding |
-| **The arithmetic fold itself (`fold="on"`)** | searched everywhere it could hide: on top of distillation t=-0.10 (round 32); single-function at 25 paired seeds on the current substrate t=-1.26, NOMINALLY NEGATIVE, fold-off also more seed-stable; long budget (9000 epochs) t=+0.41, noise; LoRA-era ns (round 23). The fold EVENT remains load-bearing as distillation's schedule | **STEP: no configuration found where it helps. EVENT: distillation's clock** |
+| ~~The arithmetic fold~~ (REMOVED 2026-07-30, Daniel's call) | searched everywhere it could hide: on top of distillation t=-0.10; single-function 25 paired seeds t=-1.26 nominally negative; long budget t=+0.41 noise; LoRA-era ns. Removed along with the five fold-selection rules; consolidation is distillation alone on `distill_every` | **REMOVED — new code bit-identical to the old code's best arms (fold-off single, distill-only multi)** |
 | `init_decoder` warm start | related image families: warm wins every checkpoint; CA alphabet: yes. Locomotion: FAILS both quadrants | PROVEN, family-dependent |
 | `mutation_memory="shared"` (off) | tie as ported (t=-0.04); legacy evidence belongs to the legacy substrate | UNSUPPORTED here |
 | `immigrants="stall"` (off) | no effect either direction at 10 seeds | UNSUPPORTED |
@@ -4115,3 +4115,30 @@ distillation's proven schedule; off for single-function runs, where no
 consolidation mechanism has ever shown direct evidence and the events tax
 6% of the budget in re-scores. The sign vote stays as the step rule
 wherever events fire (variance result, harmless step).
+
+
+**Round thirty-five — THE FOLD IS REMOVED; CONSOLIDATION IS DISTILLATION
+(2026-07-30, Daniel: "let's remove folding if it's never been helpful and
+instead iterate on distillation").** The arithmetic absorb, the Adam
+accumulator over latents, and all five fold-selection rules (champion,
+sign vote, rank-weighted, centered-rank, natural-gradient) are gone from
+solve(), along with fold / fold_every / fold_optimizer / fold_lr /
+fold_correction. Consolidation is now one mechanism on one knob:
+`distill_every=32` — replay buffer of each function's best-ever
+(genes -> phenotype), 40 Adam steps on the base with zero modifier,
+modifier decay 0.3, honest re-score. Multi-function auto-on.
+
+Verification, seeded targets, epoch-for-epoch: the new code is
+BIT-IDENTICAL to the old code's measured-best arm in both regimes —
+single-function matches old fold="off" (the winner of the 25-seed test)
+and multi-function matches old fold_lr=0-with-distillation (the
+decomposition's distill-only arm). Single-function runs also stop paying
+the ~6% re-score tax the fold charged for nothing. The sign vote's
+variance result is retired with its mechanism, honored in the record.
+
+Distillation's untuned knobs, now the iteration surface: lr (1e-3, never
+swept), distill_steps (40), distill_every (32 — inherited from the fold,
+also never swept), distill_decay (0.3, the experimental loop's constant),
+replay buffer size and composition (best-ever only; top-k per function
+and negative examples untried), and whether the decay should be
+per-individual rather than global.

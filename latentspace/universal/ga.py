@@ -7,9 +7,14 @@ no individual ever IS a solution: an individual is genes (the input the
 shared decoder network reads) plus latents (a vector that bends the shared
 network's behavior for that individual alone), and solutions are always
 computed by decoding. Second, there is exactly ONE decoder network for the
-whole run; when an individual's bending has proven useful, it is applied
-DIRECTLY into the network's weights — exact arithmetic, no training — so
-the environment itself absorbs discoveries over time.
+whole run, and on multi-function runs it LEARNS: the base is periodically
+distilled — gradient-trained toward each function's best-ever phenotype
+from its genes, with every per-individual modifier decaying afterward — so
+the environment itself absorbs discoveries over time. Evolution vets;
+gradients consolidate. (The original arithmetic fold — apply a bending
+directly, no training — was searched for at short and long budgets, both
+substrates, alone and alongside distillation, and no configuration was
+found where it helps; removed 2026-07-30 at Daniel's direction.)
 
 Genes and latents are different concepts and are never conflated: they are
 stored separately, crossed by different functions, mutated by different
@@ -32,7 +37,6 @@ Every operator is a replaceable function:
   latent_inheritance — which parent's latents a child receives (whole)
   gene_mutation / latent_mutation — how each space is perturbed
   speciation         — how individuals move onto other fitness functions
-  fold_selection     — whose latents get applied into the shared decoder
 
 Population starts from `founders` random individuals per fitness function
 (default 16 — measured 2026-07-27: every individual descends from the
@@ -44,11 +48,6 @@ best-ever record per function is kept as pure bookkeeping (never bred
 from) so the solver returns an answer for every function even after
 extinctions.
 
-The fold defaults to a coordinate-wise SIGN VOTE across the population
-(2026-07-27): mean and median tie the single-champion rule at 30 paired
-seeds, but run-to-run spread halves (sd 2.05x, worst run 0.054 -> 0.030),
-because a majority vote structurally cannot be dragged by one
-unrepresentative individual the way absorbing a single champion can.
 """
 from __future__ import annotations
 
@@ -210,98 +209,6 @@ def make_random_speciation(rate=0.02):
     return speciate
 
 
-def largest_niche_champion_fold_selection(weights, fn_idx):
-    """Apply the latents of the best member of the function with the most
-    members — the most-proven niche donates its bending to the shared
-    decoder. Returns a single index."""
-    fns, counts = np.unique(fn_idx, return_counts=True)
-    f = fns[np.argmax(counts)]
-    members = np.flatnonzero(fn_idx == f)
-    return int(members[np.argmax(weights[members])])
-
-
-# Fold rules may instead return a WEIGHT VECTOR over the population, in
-# which case the fold absorbs the weighted mean of everyone's latents.
-# Motivation (Daniel, 2026-07-27): the champion rule is a sample of ONE and
-# winners-only, which is what round 49 diagnosed and round 50 overturned —
-# pooling every child's noise SIGNED BY ITS FITNESS CHANGE, failures
-# included, was the campaign's strongest result. Round 45 separately found
-# averaging beat picking for decoder inheritance. Averaging should also pay
-# MORE now than when last tested: with two founders the population was one
-# lineage of near-clones, and with sixteen there are independent lineages,
-# so the mean cancels noise instead of re-averaging the same individual.
-
-def sign_vote_fold_selection(weights, fn_idx, latents):
-    """Coordinate-wise weighted MAJORITY VOTE on direction (Daniel, 2026-07-27).
-
-    A mean is dominated by whichever individuals happen to carry large
-    latents, and it cancels when magnitudes disagree even if directions do
-    not. A sign vote throws magnitude away on purpose: every individual gets
-    one share-weighted vote per coordinate for "up" or "down", and the step
-    takes the majority direction at a magnitude set by what the population
-    actually uses there. This is the signSGD/majority-vote estimator, and it
-    is robust exactly where the mean is fragile."""
-    share = weights / (weights.sum() + 1e-12)
-    vote = (share[:, None] * np.sign(latents)).sum(axis=0)
-    scale = (share[:, None] * np.abs(latents)).sum(axis=0)
-    return "step", (np.sign(vote) * scale).astype(np.float64)
-
-
-def natural_gradient_fold_selection(weights, fn_idx, latents):
-    """A gradient ESTIMATE in latent space rather than an average position.
-
-    The fold has always absorbed a position — one individual's whole
-    bending. Round 50's law was about something different: deltas signed by
-    the fitness change they caused. The analogue here is the NES estimator —
-    weight each individual's DEVIATION FROM THE POPULATION MEAN by its
-    centered rank, so latents that did better than average pull the decoder
-    toward themselves and those that did worse push it away."""
-    step = np.zeros(latents.shape[1], dtype=np.float64)
-    for f in np.unique(fn_idx):
-        members = np.flatnonzero(fn_idx == f)
-        if len(members) < 2:
-            continue
-        block = latents[members].astype(np.float64)
-        adv = np.argsort(np.argsort(weights[members])).astype(np.float64)
-        adv = adv / (len(members) - 1.0) - 0.5
-        step += (adv[:, None] * (block - block.mean(axis=0))).sum(axis=0)
-    norm = np.linalg.norm(step)
-    if norm > 0:
-        step *= np.linalg.norm(latents, axis=1).mean() / norm
-    return "step", step
-
-
-def rank_weighted_fold_selection(weights, fn_idx):
-    """Rank-weighted mean of the largest niche's latents. Ranks rather than
-    raw fitness because the record has been burned twice by fitness scale
-    and ties (rounds 32, 41)."""
-    fns, counts = np.unique(fn_idx, return_counts=True)
-    f = fns[np.argmax(counts)]
-    members = np.flatnonzero(fn_idx == f)
-    out = np.zeros(len(weights))
-    order = np.argsort(np.argsort(weights[members]))     # 0 = worst
-    out[members] = order + 1.0
-    return out / out.sum()
-
-
-def centered_rank_fold_selection(weights, fn_idx):
-    """Centered ranks over the WHOLE population, so poor latents push the
-    decoder away from themselves instead of being discarded. Round 50's law
-    ("failures are gradient samples; pool them") applied to the fold.
-    Per-species centering keeps a species' internal ranking meaningful
-    without letting a large species dominate by count alone."""
-    out = np.zeros(len(weights))
-    for f in np.unique(fn_idx):
-        members = np.flatnonzero(fn_idx == f)
-        if len(members) < 2:
-            continue
-        order = np.argsort(np.argsort(weights[members])).astype(np.float64)
-        order = order / (len(members) - 1.0) - 0.5        # -0.5 .. +0.5
-        out[members] = order
-    scale = np.abs(out).sum()
-    return out / scale if scale > 0 else out
-
-
 # --------------------------------------------------------------- the loop
 
 def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
@@ -311,14 +218,12 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
           latent_inheritance=coin_flip_latent_inheritance,
           gene_mutation=None, latent_mutation=None,
           speciation=None,
-          fold_selection=sign_vote_fold_selection,
-          fold="on", fold_every=32, fold_optimizer="adam",
-          fold_lr=0.5, fold_correction="auto",
           directions="sparse-shared", direction_every=16,
           direction_sigma=0.1, fresh_basis_rate=0.1,
           win_target=0.2, dial_step=1.15,
           mutation_memory="off", memory_drift=0.5,
-          distill="auto", distill_steps=40, distill_decay=0.3,
+          distill="auto", distill_every=32,
+          distill_steps=40, distill_decay=0.3,
           founding="per_function", founders=16,
           immigrants="off", immigrant_patience=32,
           progress=None, progress_every=None,
@@ -360,38 +265,6 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         designed refinements are one-direction-at-a-time proposals, a
         share-weighted acceptance signal, and trialing right after folds
         when the vocabulary is least load-bearing.
-    fold: "on" treats proven individuals' latents as measured update
-        directions for the shared decoder (Daniel's framing: evolution is
-        computing gradients). Default: every `fold_every` epochs the
-        selected donor's latents feed an Adam accumulator and the
-        processed step is absorbed into the decoder by exact arithmetic —
-        momentum keeps the cross-species consensus direction, the second
-        moment damps dimensions donors disagree on. Measured (3 paired
-        seeds): Adam flips frequent folding from harmful (raw every-32:
-        0.053) to the best configuration (0.026, better than the raw
-        doubling schedule on every seed, tying the legacy champion
-        engine). The donor's phenotype is preserved exactly for any step
-        size; everyone else shifts and is honestly re-scored.
-        fold_optimizer="raw" absorbs whole bendings; "off" disables
-        folding; fold_every=None restores the doubling schedule.
-    fold_selection: what the fold absorbs. Default sign_vote_fold_selection
-        (share-weighted majority vote on direction per coordinate) — ties
-        the champion rule on mean and median at 30 paired seeds but halves
-        run-to-run spread. largest_niche_champion_fold_selection is the
-        prior default; rank_weighted / centered_rank / natural_gradient
-        variants are measured-tie research arms. Combined-step rules fall
-        back to the champion under seeded bases (sparse/individual), where
-        coordinates are not shared across individuals.
-    fold_correction: who is corrected after a fold ("auto" = the donor
-        only). Correcting everyone preserves all phenotypes exactly and is
-        measurably WORSE (15% on the apple) — removing the consensus from
-        every individual shrinks the population's bendings toward each
-        other, and that variety is load bearing.
-    founders: random individuals founded per fitness function (default 16).
-        Founding count IS the run's coverage of the space — every later
-        individual descends from it. Sixteen took MountainCarContinuous
-        from 5/10 to 10/10 seeds at +0.6% budget; images neutral. Pass 2 to
-        reproduce benchmarks recorded before 2026-07-27.
     mutation_memory: "shared" pools every child's birth delta SIGNED BY
         ITS FITNESS CHANGE — failures included — into one Adam-style
         accumulator per space (genes and latents separately, never mixed),
@@ -567,13 +440,9 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
         mem[key] = [0.9 * m + 0.1 * g, 0.999 * v + 0.001 * g * g,
                     steps + 1, df_scale]
 
-    next_fold = 32
     replay_z: list[np.ndarray] = []
     replay_p: list[np.ndarray] = []
     distill_opt: list = [None]
-    adam_m = np.zeros(latents, dtype=np.float64)
-    adam_v = np.zeros(latents, dtype=np.float64)
-    adam_t = 0
     # Direction evolution ((1+1)-ES on the shared low-rank vocabulary, with
     # an Adam memory over ACCEPTED changes so proposals drift along what
     # has historically worked — the round-50 pattern one level deeper).
@@ -727,142 +596,50 @@ def solve(fitness_fns, output_shape, epochs=1_000, architecture="auto",
                     pop_genes[moved], pop_latents[moved], pop_fn[moved],
                     pop_basis[moved] if seeded else None)
 
-        # --- fold: a proven individual's latents are treated as a measured
-        # update direction for the shared decoder (Daniel: "we are
-        # essentially applying gradients"). fold_optimizer="raw" absorbs
-        # the donor's whole bending; "adam" feeds each event into an
-        # Adam-style accumulator (momentum + per-dimension normalization)
-        # and absorbs the processed step. Either way the absorbed step is
-        # subtracted from the donor's latents, which preserves the donor's
-        # phenotype EXACTLY for any step size (the bending is linear in the
-        # latents); everyone else feels the shift, so the population is
-        # honestly re-scored.
-        if fold_every is not None:
-            fold_due = fold != "off" and (epoch + 1) % int(fold_every) == 0
-        else:
-            fold_due = fold == "doubling" and epoch + 1 >= next_fold
-            if fold_due:
-                next_fold *= 2
-        if fold_due:
-            import inspect as _inspect
-            _shares = fitness_shares(pop_score, pop_fn)
-            if len(_inspect.signature(fold_selection).parameters) >= 3:
-                chosen = fold_selection(_shares, pop_fn, pop_latents)
-            else:
-                chosen = fold_selection(_shares, pop_fn)
-            # A rule may hand back a finished step ("step", vector) when the
-            # combination it wants is not a linear weighting of individuals
-            # — a sign vote is not expressible as one.
-            direct_step = None
-            if isinstance(chosen, tuple) and chosen[0] == "step":
-                # A combined step mixes individuals, so under a PER-
-                # INDIVIDUAL seeded basis its coordinates refer to different
-                # weights per individual and it cannot be absorbed as one
-                # patch; those arms fall back to the champion rule. A
-                # SHARED-site basis has one coordinate system, so combined
-                # steps absorb fine there.
-                mixable = (not seeded) or shared_sites
-                if mixable:
-                    direct_step = np.asarray(chosen[1], dtype=np.float64)
-                chosen = (int(np.argmax(_shares)) if mixable else
-                          largest_niche_champion_fold_selection(_shares, pop_fn))
-            # A rule may return one index (absorb that individual's latents,
-            # correct that individual) or a weight vector over the whole
-            # population (absorb the weighted mean). The mean has no single
-            # donor to correct, but the latent->weight composition is
-            # LINEAR, so subtracting the absorbed step from EVERY individual
-            # preserves every phenotype exactly: decoder+P@s applied to
-            # latents-s equals decoder applied to latents. Only available in
-            # a shared basis; seeded bases (sparse/individual) give each
-            # individual its own weight coordinates, so a population mean is
-            # not expressible as one absorb and those arms keep the
-            # single-donor rule.
-            averaged = (direct_step is None and not np.isscalar(chosen)
-                        and np.ndim(chosen) == 1
-                        and ((not seeded) or shared_sites))
-            if fold_correction == "donor":
-                correct_all = False
-            elif fold_correction == "all":
-                correct_all = True
-            else:
-                # "auto" = donor. Correcting EVERY individual preserves all
-                # phenotypes exactly (linear composition), which is elegant
-                # and measurably worse: apple, 5 paired seeds, it costs the
-                # champion rule 15% (0.018204 -> 0.020972). Removing the
-                # consensus from everyone shrinks the population's bendings
-                # toward each other every fold, and that variety is load
-                # bearing. Exactness is not the objective.
-                correct_all = False
-            if averaged and seeded and not shared_sites:
-                chosen = int(np.argmax(np.asarray(chosen)))
-                averaged = False
-            if averaged:
-                w = np.asarray(chosen, dtype=np.float64)
-                g = (w[:, None] * pop_latents.astype(np.float64)).sum(axis=0)
-                donor = int(np.argmax(w))
-            else:
-                donor = int(chosen)
-                g = pop_latents[donor].astype(np.float64)
-            if direct_step is not None:
-                g = direct_step
-            if fold_optimizer == "adam":
-                adam_t += 1
-                adam_m = 0.9 * adam_m + 0.1 * g
-                adam_v = 0.999 * adam_v + 0.001 * g * g
-                m_hat = adam_m / (1 - 0.9 ** adam_t)
-                v_hat = adam_v / (1 - 0.999 ** adam_t)
-                step = (fold_lr * m_hat
-                        / (np.sqrt(v_hat) + 1e-8)).astype(np.float32)
-            else:
-                step = pop_latents[donor].copy()
-            if seeded:
-                decoder.absorb_seeded(step, int(pop_basis[donor]))
-            else:
-                decoder.absorb(step)
-            if correct_all:
-                pop_latents -= step          # every phenotype preserved
-            else:
-                pop_latents[donor] -= step
-            # "auto" (default since 2026-07-30): distillation is a CROSS-
-            # PROBLEM consolidator — it trains the base toward what co-
-            # resident species' patches achieved, so it has nothing to offer
-            # a single function (apple: 5/10, t=-1.38) and a 30% win when
-            # species share the decoder (8 species: 10/10, t=+16.7, the
-            # largest effect in the campaign). Auto = on exactly where it is
-            # measured to pay.
-            distill_on = (distill == "on" or (distill == "auto" and n_fns >= 2))
-            if distill_on and ((not seeded) or shared_sites) \
-                    and hasattr(decoder, "training_logits"):
-                for f in range(n_fns):
-                    if best_pheno[f] is not None:
-                        replay_z.append(best_genes[f].copy())
-                        replay_p.append(best_pheno[f].reshape(-1).copy())
-                del replay_z[:-256], replay_p[:-256]
-                net = decoder.net
-                if distill_opt[0] is None:
-                    trainable = [q for name, q in net.named_parameters()
-                                 if "down" not in name and "up" not in name]
-                    distill_opt[0] = torch.optim.Adam(trainable, lr=1e-3)
-                Z = torch.as_tensor(np.stack(replay_z), device=decoder.device)
-                P = torch.as_tensor(np.stack(replay_p), device=decoder.device)
-                for _ in range(int(distill_steps)):
-                    idx = torch.randint(0, len(Z), (min(64, len(Z)),),
-                                        device=decoder.device)
-                    distill_opt[0].zero_grad()
-                    out = torch.sigmoid(
-                        decoder.training_logits(Z[idx])).reshape(len(idx), -1)
-                    ((out - P[idx]) ** 2).mean().backward()
-                    distill_opt[0].step()
-                if hasattr(decoder, "sync_base"):
-                    decoder.sync_base()      # sparse decode reads the flat base
-                # The absorbed discovery is now in the base, so every
-                # bending shrinks toward zero — the distill analogue of the
-                # arithmetic fold subtracting its step from the donor. The
-                # first port omitted this and the discovery was applied
-                # TWICE (base + full-strength latents): apple t=-2.05
-                # against fold-only. Same constant as the experimental
-                # loop's patch_decay.
-                pop_latents *= float(distill_decay)
+        # --- consolidation (2026-07-30, Daniel: "remove folding if it's
+        # never been helpful and instead iterate on distillation"). The
+        # arithmetic fold was searched for at short and long budgets, both
+        # substrates, alone and alongside distillation (~70 paired runs)
+        # and no configuration was found where it helps; it is gone.
+        # Consolidation is now DISTILLATION alone, on this event's cadence:
+        # each function's best-ever (genes -> phenotype) pair joins a
+        # replay buffer, the BASE decoder takes Adam steps toward it with
+        # zero per-individual modifier, every modifier then decays (the
+        # discovery lives in the base now), and the population is honestly
+        # re-scored. Multi-function only (measured: 10/10 seeds, t=+16.7;
+        # single-function t=-1.38) and only where all individuals share
+        # one coordinate system.
+        distill_on = (distill == "on" or (distill == "auto" and n_fns >= 2))
+        consolidate = (distill_on and (epoch + 1) % int(distill_every) == 0
+                       and ((not seeded) or shared_sites)
+                       and hasattr(decoder, "training_logits"))
+        if consolidate:
+            for f in range(n_fns):
+                if best_pheno[f] is not None:
+                    replay_z.append(best_genes[f].copy())
+                    replay_p.append(best_pheno[f].reshape(-1).copy())
+            del replay_z[:-256], replay_p[:-256]
+            net = decoder.net
+            if distill_opt[0] is None:
+                trainable = [q for name, q in net.named_parameters()
+                             if "down" not in name and "up" not in name]
+                distill_opt[0] = torch.optim.Adam(trainable, lr=1e-3)
+            Z = torch.as_tensor(np.stack(replay_z), device=decoder.device)
+            P = torch.as_tensor(np.stack(replay_p), device=decoder.device)
+            for _ in range(int(distill_steps)):
+                idx = torch.randint(0, len(Z), (min(64, len(Z)),),
+                                    device=decoder.device)
+                distill_opt[0].zero_grad()
+                out = torch.sigmoid(
+                    decoder.training_logits(Z[idx])).reshape(len(idx), -1)
+                ((out - P[idx]) ** 2).mean().backward()
+                distill_opt[0].step()
+            if hasattr(decoder, "sync_base"):
+                decoder.sync_base()      # sparse decode reads the flat base
+            # The absorbed discovery is now in the base, so every bending
+            # shrinks toward zero; omitting this decay applied discoveries
+            # twice and measured t=-2.05.
+            pop_latents *= float(distill_decay)
             pop_score = score(pop_genes, pop_latents, pop_fn,
                               pop_basis if seeded else None)
 

@@ -15,11 +15,14 @@ run's entire coverage of the space, and two was measured too few,
 2026-07-27); genes and latents as permanently distinct spaces with their own
 crossover and mutation operators; a capped population with extinction
 allowed; speciation re-assigning individuals across fitness functions over
-time; and one shared decoder that discoveries are folded into — by a
-share-weighted SIGN VOTE across the population by default, which ties
-absorbing the single champion on average and halves run-to-run variance.
-Every operator is a replaceable function. `init_decoder=` warm-starts the
-shared decoder from a previous run's `GAResult.decoder`.
+time; and one shared decoder that CONSOLIDATES by distillation: on
+multi-function runs the base is periodically gradient-trained to reproduce
+each function's best-ever phenotype from its genes, then every
+per-individual modifier decays (measured: 10/10 seeds, t=+16.7, -30% MSE
+on 8 co-resident problems; the arithmetic fold it replaces was searched at
+every budget and substrate and never helped). Every operator is a
+replaceable function. `init_decoder=` warm-starts the shared decoder from
+a previous run's `GAResult.decoder`.
 
 The per-individual modifier's FORM is a first-class choice: low-rank
 gating of frozen random directions (default) or sparse weight patches
@@ -36,11 +39,6 @@ from .ga import (
     ProblemResult,
     coin_flip_latent_inheritance,
     fitness_shares,
-    largest_niche_champion_fold_selection,
-    sign_vote_fold_selection,
-    rank_weighted_fold_selection,
-    centered_rank_fold_selection,
-    natural_gradient_fold_selection,
     make_gaussian_mutation,
     make_random_speciation,
     make_species_selection,
@@ -56,8 +54,6 @@ __all__ = [
     "fitness_shares",
     "one_point_gene_crossover",
     "coin_flip_latent_inheritance", "make_gaussian_mutation",
-    "make_random_speciation", "largest_niche_champion_fold_selection",
-    "sign_vote_fold_selection", "rank_weighted_fold_selection",
-    "centered_rank_fold_selection", "natural_gradient_fold_selection",
+    "make_random_speciation",
     "register_architecture", "resolve", "build_mlp",
 ]
