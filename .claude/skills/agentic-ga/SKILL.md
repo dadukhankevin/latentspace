@@ -48,8 +48,24 @@ never improvised by any agent.
 
 ## The loop
 
-Fully self-driving (preferred for real runs): one command renders
-prompts, spawns agents via any CLI, audits mechanically, and pauses for
+PRIMARY MODE — orchestrator-run (Daniel's ruling, 2026-07-30): a live
+agent session runs the GA with judgment, using the engine server for
+the laws. Start the server (below), then: POST /ask for jobs, render
+each job's prompt from latentspace/universal/agentic_prompts/ (reuse
+`_template` and `FOUNDER_ANGLES` from latentspace.universal.drive),
+spawn one agent per job as a background shell command using ANY agent
+CLI — mix CLIs per job if useful (e.g. codex for decoders, claude for
+the consolidator; verified: `codex exec -m gpt-5.6-luna --sandbox
+workspace-write -c sandbox_workspace_write.network_access=true`).
+Agents report themselves via POST /tell. The orchestrator's judgment
+calls: how many jobs run in parallel (measurement-locked tasks like lm
+starve under contention — stagger or serialize; lock-free tasks like
+compress parallelize fully), when to audit and what smells illegitimate,
+when consolidation is worth its cost, retrying dead jobs, and reading
+every consolidation proposal before applying it.
+
+Self-driving (unattended/overnight): one command renders prompts,
+spawns agents via any CLI, audits mechanically, and pauses for
 consolidation review (--auto-consolidate to run overnight):
 
     python3 -m latentspace.universal.drive --run <run_dir> \
