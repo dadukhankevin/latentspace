@@ -135,3 +135,27 @@ def test_audit_correction_evicts_false_best_ever():
     ga.retell_score(cheat, -99.0)          # audit exposes the fraud
     assert ga.best["alpha"]["id"] == honest
     assert ga.best["alpha"]["score"] == 5.0
+
+
+def test_lineage_exhaustion_refound_and_no_more_breeding():
+    ga = AgenticGA(tasks=["alpha"], founders=1, children=3, seed=9)
+    [job] = ga.ask()
+    parent = ga.tell(job["job_id"], "the idea", 5.0)
+    mut = [j for j in ga.ask() if j["kind"] != "found"][0]
+    child = ga.tell(mut["job_id"], "a totally new idea", 3.0,
+                    fresh_start=True)
+    assert ga.individuals[child]["origin"] == "refound"
+    assert ga.individuals[parent]["exhausted"] is True
+    # the exhausted parent never breeds again (archive still holds it)
+    for j in ga.ask():
+        assert all(p["id"] != parent for p in j["parents"])
+    assert ga.best["alpha"]["id"] == parent      # best-ever survives
+
+
+def test_fully_exhausted_task_is_refounded():
+    ga = AgenticGA(tasks=["alpha"], founders=1, children=2, seed=10)
+    [job] = ga.ask()
+    only = ga.tell(job["job_id"], "x", 1.0)
+    ga.individuals[only]["exhausted"] = True
+    jobs = ga.ask()
+    assert any(j["kind"] == "found" for j in jobs)

@@ -18,6 +18,8 @@ Honesty: report exactly the number the canonical scorer printed for the artifact
 
 Budget: at most 3 canonical scorer runs for this job, tuning included. Any offline training experiment you run must first take the scorer's own lock (see the scorer source) so trainings never overlap on this machine.
 
+Lineage exhaustion (legitimate option): if, after honest effort, you conclude the parent's idea genuinely cannot be taken further, do not grind out a token variation — invent a FRESH variation instead (as if founding: a new angle, not a rephrase of the parent) and include "fresh_start": true in your report. The parent's best work already lives in the archive and, if consolidated, in the base playbook; declaring a dead end is information, not failure. Say in log.md why the lineage is spent.
+
 If you cannot finish — the scorer keeps failing, you are out of attempts, anything — do NOT go silent: report the failure with curl -s -X POST localhost:{port}/abandon -d '{{"job_id": "{job_id}"}}' so the engine can reassign the work. The scorer may block for several minutes waiting on the machine's training lock; always run it with a generous timeout.
 
 When finished, report directly to the engine:

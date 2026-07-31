@@ -136,21 +136,29 @@ class AgenticGA:
                     for t in self.tasks for _ in range(self.founders)]
         jobs = []
         living = self._living()
-        alive_tasks = {i["task"] for i in living}
+        # a lineage its own agent declared exhausted stays in the
+        # population (shares, cap, archive) but no longer breeds — the
+        # agent's dead-end verdict is information (Daniel, 2026-07-30:
+        # "if they can't take their idea any further, try something
+        # else... killing the last one is fine cause it's now part of
+        # the base"). A task whose every member is exhausted is
+        # refounded like an extinct one.
+        breedable = [i for i in living if not i.get("exhausted")]
+        alive_tasks = {i["task"] for i in breedable}
         for t in self.tasks:
             if t not in alive_tasks:
                 jobs.append(self._job("found", t))
-        if living:
-            weights = self._weights(living)
+        if breedable:
+            weights = self._weights(breedable)
             while len(jobs) < self.children:
-                a = self.rng.choices(living, weights=weights)[0]
-                kin = [i for i in living
+                a = self.rng.choices(breedable, weights=weights)[0]
+                kin = [i for i in breedable
                        if i["task"] == a["task"] and i["id"] != a["id"]]
-                pool = ([i for i in living if i["id"] != a["id"]]
+                pool = ([i for i in breedable if i["id"] != a["id"]]
                         if (self.rng.random() < self.outcross_rate
                             or not kin) else kin)
                 if pool and self.rng.random() < self.crossover_rate:
-                    kw = [max(w, 1e-12) for i, w in zip(living, weights)
+                    kw = [max(w, 1e-12) for i, w in zip(breedable, weights)
                           if any(i["id"] == p["id"] for p in pool)]
                     b = self.rng.choices(pool, weights=kw)[0]
                     jobs.append(self._job("crossover", a["task"], (a, b)))
@@ -161,18 +169,30 @@ class AgenticGA:
     # --------------------------------------------------------------- tell
 
     def tell(self, job_id, variation, score, artifact=None,
-             contradicts_base=False, log=None):
+             contradicts_base=False, log=None, fresh_start=False):
         """Report a finished job: the child's variation text, its score
         from the CANONICAL fitness script, and the artifact path that
         makes the score reproducible. Returns the new individual's id.
-        Culls to the population cap by shares (extinction allowed)."""
+        Culls to the population cap by shares (extinction allowed).
+
+        fresh_start=True is the agent's lineage-exhaustion verdict: it
+        was given a parent to build on, judged the idea spent, and
+        founded fresh instead. The new individual's origin is "refound"
+        and every parent of the job is marked exhausted (it stops
+        breeding; its best work survives in the archive and, if
+        consolidated, in the base)."""
         job = self._open_jobs.pop(job_id)
         ind_id = f"i{self._next_id:04d}"
         self._next_id += 1
+        origin = job["kind"]
+        if fresh_start and job["kind"] != "found":
+            origin = "refound"
+            for parent in job["parents"]:
+                self.individuals[parent["id"]]["exhausted"] = True
         record = {
             "id": ind_id, "task": job["task"], "variation": variation,
             "score": float(score), "artifact": artifact, "log": log,
-            "origin": job["kind"],
+            "origin": origin,
             "parents": [p["id"] for p in job["parents"]],
             "born_round": self.round,
             "scored_on_base": self.base_version,

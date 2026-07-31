@@ -53,11 +53,19 @@ agent session runs the GA with judgment, using the engine server for
 the laws. Start the server (below), then: POST /ask for jobs, render
 each job's prompt from latentspace/universal/agentic_prompts/ (reuse
 `_template` and `FOUNDER_ANGLES` from latentspace.universal.drive),
-spawn one agent per job as a background shell command using ANY agent
-CLI — mix CLIs per job if useful (e.g. codex for decoders, claude for
-the consolidator; verified: `codex exec -m gpt-5.6-luna --sandbox
-workspace-write -c sandbox_workspace_write.network_access=true`).
-Agents report themselves via POST /tell. The orchestrator's judgment
+and spawn one worker per job **with your runtime's NATIVE subagent
+mechanism** — a Claude session uses its Agent tool, a Codex session
+uses its own spawning. The server API is the only contract: any
+process that can POST /tell is a valid worker; no cross-CLI plumbing
+is needed when the orchestrator and workers share a runtime.
+Cross-CLI shell-out is the exception, for unattended drive.py runs or
+deliberately mixed fleets (verified codex string: `codex exec -m
+gpt-5.6-luna --sandbox workspace-write -c
+sandbox_workspace_write.network_access=true`).
+Agents report themselves via POST /tell — including
+`"fresh_start": true` when a breeding job's agent judged its parent
+lineage exhausted and founded fresh instead (the engine marks the
+parent non-breeding; its archive record survives). The orchestrator's judgment
 calls: how many jobs run in parallel (measurement-locked tasks like lm
 starve under contention — stagger or serialize; lock-free tasks like
 compress parallelize fully), when to audit and what smells illegitimate,

@@ -212,7 +212,8 @@ class GAService:
                               body["score"], artifact=body.get("artifact"),
                               contradicts_base=body.get(
                                   "contradicts_base", False),
-                              log=body.get("log"))
+                              log=body.get("log"),
+                              fresh_start=body.get("fresh_start", False))
                 return {"id": ind}, True
             if name == "abandon":
                 ga.abandon(body["job_id"])
