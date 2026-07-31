@@ -3988,7 +3988,7 @@ a predecessor or a neighbour. Update this table when a default changes.
 | `distill="auto"` (default: on for multi-function; every=64, decay=0.7) | existence: 10/10, t=+16.7 vs no consolidation; tuning: every=64+decay=0.7 beats the inherited center 10/10, t=+13.2, -22%, with both decay cliffs mapped (0.15: +16%; 1.0: +49%, the double-counting failure measured on-substrate) | PROVEN and TUNED, multi-function |
 | Gradient distillation as such (not installed) | +16pt over arithmetic fold (3 seeds); transfer; the Design The Past demo | PROVEN, not shipped |
 | One-point gene crossover / whole-latent inheritance | legacy rounds 42-45 (t=5.6 image, t=5.3 curve) measured on the LEGACY substrate; not re-attributed since the redesign | LEGACY EVIDENCE |
-| `AgenticGA` ask/tell engine (agentic substrate scaffolding) | end-to-end smoke only (round 38): loop runs, audit reproduces scores, holdout catches train-only gains. NO control arm yet — one-agent-iterating at matched agent-call budget is the pre-registered question | SCAFFOLDING — no performance claim |
+| `AgenticGA` ask/tell engine + orchestrator-run harness | round 39: first matched comparison WON on compress (31 jobs each, same model): GA 2.8461/1.9954 vs solo keep/revert 3.0322/2.2473 (practice/surprise bits-per-byte). n=1, one task — suggestive, not proven; needs repetition + a second task before a mechanism claim | FIRST WIN, n=1 |
 
 
 **Round thirty-one — THE SLOT TEST: gradient consolidation, proven in the
@@ -4326,3 +4326,46 @@ tricks, and a risk dimension (budget engineering) that punishes
 carelessness. GA-vs-solo remains unrun (spawning headless `claude -p`
 subprocesses is permission-gated in this harness); both sides are
 built, matched at 16 agent calls and <=3 scorer runs per call.
+
+## Round thirty-nine — the first matched comparison: population beats solo iteration on compress (2026-07-30, n=1)
+
+The design: the same agent model (codex gpt-5.6-luna), the same
+canonical scorer, the same starting artifact (order-0 arithmetic coder,
+5.008 bits/byte on the practice slice), and THE SAME BUDGET — 31 agent
+invocations each. One side is the agentic GA run live by the
+orchestrator (population cap 16, steady-state spawning, assigned
+founder angles, rotating one-change/telephone/masked mutations, one
+consolidation that wrote the champion's sparse order-4 PPM structure
+plus the robustness rule into the shared playbook, every influential
+score re-verified, surprise-slice audits throughout). The other is
+Karpathy's autoresearch loop faithfully: one agent per experiment
+reading a worklog and the current champion, ONE change, keep if the
+canonical score improves, revert otherwise. Disclosure: the GA side
+additionally spent 2 orchestration agent calls (consolidator + batched
+rewrites), and one of its 31 jobs was lost to the founder that embedded
+the answer key (round 38's second addendum).
+
+    GA (population + playbook)  practice 2.8461   surprise 1.9954
+    solo (keep/revert)          practice 3.0322   surprise 2.2473
+
+The population won on both slices: 6.1% better on practice, 11% on
+surprise. The mechanism difference is visible in the raw logs, not
+inferred: the solo lineage spent its final six experiments raising ONE
+parameter one notch at a time (the order-3 context update increment,
+2x -> 7x, buying ~0.01 each) — classic single-lineage gradient milking
+— and never discovered exclusion-based PPM at all. The population held
+structurally different attempts alive in parallel (BWT pipeline,
+least-cost parsing, escape-prior designs), consolidated the best into
+the base, and its three final champions (2.8835 -> 2.8524 -> 2.8461)
+were ALL born after that consolidation, each building past the playbook
+rather than rediscovering it. The defective least-cost individual's
+child fixed its parent's decoder crash and reached champion tier — the
+population's repair path working as designed.
+
+What this round does NOT establish: this is ONE run per side, on ONE
+task, with a nondeterministic decoder — by this campaign's own
+methodology (bimodal outcomes, success rates at 10+ seeds) a single
+paired run is suggestive, not proven. The same-model correlation also
+means both sides share blind spots. The ledger row moves from
+"scaffolding" to "first matched comparison won, n=1" and nothing
+stronger until repetition and a second task.

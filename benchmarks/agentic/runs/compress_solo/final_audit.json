@@ -1,0 +1,19 @@
+{
+ "final_canonical": {
+  "task": "compress",
+  "score": -3.0322265625,
+  "bpb": 3.03223,
+  "seconds": 2.29,
+  "holdout": false,
+  "errors": []
+ },
+ "final_holdout": {
+  "task": "compress",
+  "score": -2.247314453125,
+  "bpb": 2.24731,
+  "seconds": 2.25,
+  "holdout": true,
+  "errors": []
+ },
+ "last_reported": -3.0322265625
+}

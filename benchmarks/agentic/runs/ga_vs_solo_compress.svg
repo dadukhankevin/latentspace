@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="440" font-family="ui-monospace,monospace" style="background:#fff">
+<text x="62" y="22" font-size="13" fill="#111">population with learned playbook (GA) vs one agent iterating (solo) &#8212; compress task, 31 agent jobs each</text>
+<text x="62" y="38" font-size="10" fill="#6b7280">x &#8212; agent jobs spent &#183; y &#8212; best compression so far on the practice passage (bits per byte, lower is better)</text>
+<line x1="62" y1="344.8571428571429" x2="760" y2="344.8571428571429" stroke="#f1f5f9"/>
+<text x="54" y="347.8571428571429" font-size="10" fill="#6b7280" text-anchor="end">3.0</text>
+<line x1="62" y1="276.28571428571433" x2="760" y2="276.28571428571433" stroke="#f1f5f9"/>
+<text x="54" y="279.28571428571433" font-size="10" fill="#6b7280" text-anchor="end">3.5</text>
+<line x1="62" y1="207.71428571428575" x2="760" y2="207.71428571428575" stroke="#f1f5f9"/>
+<text x="54" y="210.71428571428575" font-size="10" fill="#6b7280" text-anchor="end">4.0</text>
+<line x1="62" y1="139.14285714285717" x2="760" y2="139.14285714285717" stroke="#f1f5f9"/>
+<text x="54" y="142.14285714285717" font-size="10" fill="#6b7280" text-anchor="end">4.5</text>
+<line x1="62" y1="70.57142857142861" x2="760" y2="70.57142857142861" stroke="#f1f5f9"/>
+<text x="54" y="73.57142857142861" font-size="10" fill="#6b7280" text-anchor="end">5.0</text>
+<line x1="62" y1="69.47428571428576" x2="760" y2="69.47428571428576" stroke="#9ca3af" stroke-dasharray="5,4"/>
+<text x="66" y="64.47428571428576" font-size="9.5" fill="#6b7280">shared starting baseline 5.008</text>
+<line x1="62" y1="296.72" x2="760" y2="296.72" stroke="#9ca3af" stroke-dasharray="5,4"/>
+<text x="66" y="291.72" font-size="9.5" fill="#6b7280">zlib -9 reference 3.351 (forbidden to agents)</text>
+<path d="M 105.6 239.0 L 127.4 239.0 L 127.4 239.0 L 149.2 239.0 L 149.2 338.5 L 171.1 338.5 L 171.1 338.5 L 192.9 338.5 L 192.9 338.5 L 214.7 338.5 L 214.7 338.8 L 236.5 338.8 L 236.5 338.8 L 258.3 338.8 L 258.3 338.8 L 280.1 338.8 L 280.1 338.8 L 301.9 338.8 L 301.9 360.6 L 323.8 360.6 L 323.8 360.6 L 345.6 360.6 L 345.6 360.6 L 367.4 360.6 L 367.4 360.6 L 389.2 360.6 L 389.2 360.6 L 411.0 360.6 L 411.0 360.6 L 432.8 360.6 L 432.8 360.6 L 454.6 360.6 L 454.6 360.6 L 476.4 360.6 L 476.4 360.8 L 498.2 360.8 L 498.2 360.8 L 520.1 360.8 L 520.1 360.8 L 541.9 360.8 L 541.9 360.8 L 563.7 360.8 L 563.7 360.8 L 585.5 360.8 L 585.5 360.8 L 607.3 360.8 L 607.3 360.8 L 629.1 360.8 L 629.1 360.8 L 650.9 360.8 L 650.9 360.8 L 672.8 360.8 L 672.8 365.1 L 694.6 365.1 L 694.6 366.0 L 716.4 366.0 L 716.4 366.0 L 738.2 366.0 L 738.2 366.0 " fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<path d="M 83.8 209.8 L 105.6 209.8 L 105.6 239.5 L 127.4 239.5 L 127.4 239.5 L 149.2 239.5 L 149.2 277.8 L 171.1 277.8 L 171.1 280.3 L 192.9 280.3 L 192.9 280.3 L 214.7 280.3 L 214.7 280.3 L 236.5 280.3 L 236.5 288.2 L 258.3 288.2 L 258.3 290.4 L 280.1 290.4 L 280.1 290.8 L 301.9 290.8 L 301.9 290.9 L 323.8 290.9 L 323.8 290.9 L 345.6 290.9 L 345.6 294.4 L 367.4 294.4 L 367.4 294.8 L 389.2 294.8 L 389.2 294.8 L 411.0 294.8 L 411.0 294.8 L 432.8 294.8 L 432.8 295.3 L 454.6 295.3 L 454.6 295.3 L 476.4 295.3 L 476.4 295.4 L 498.2 295.4 L 498.2 295.4 L 520.1 295.4 L 520.1 295.4 L 541.9 295.4 L 541.9 295.4 L 563.7 295.4 L 563.7 321.0 L 585.5 321.0 L 585.5 321.0 L 607.3 321.0 L 607.3 321.0 L 629.1 321.0 L 629.1 329.8 L 650.9 329.8 L 650.9 334.4 L 672.8 334.4 L 672.8 337.1 L 694.6 337.1 L 694.6 338.8 L 716.4 338.8 L 716.4 339.9 L 738.2 339.9 L 738.2 340.4 " fill="none" stroke="#d97706" stroke-width="2.5"/>
+<text x="734.1875" y="383.96763392857144" font-size="11" fill="#2563eb" font-weight="bold" text-anchor="end">GA 2.8461</text>
+<text x="734.1875" y="332.4375" font-size="11" fill="#d97706" font-weight="bold" text-anchor="end">solo 3.0322</text>
+<rect x="550" y="56" width="12" height="3" fill="#2563eb"/><text x="568" y="62" font-size="10" fill="#374151">GA: population + consolidating playbook</text>
+<rect x="550" y="74" width="12" height="3" fill="#d97706"/><text x="568" y="80" font-size="10" fill="#374151">solo: one agent, keep/revert</text>
+<text x="62.0" y="402" font-size="10" fill="#6b7280" text-anchor="middle">0</text>
+<text x="149.25" y="402" font-size="10" fill="#6b7280" text-anchor="middle">4</text>
+<text x="236.5" y="402" font-size="10" fill="#6b7280" text-anchor="middle">8</text>
+<text x="323.75" y="402" font-size="10" fill="#6b7280" text-anchor="middle">12</text>
+<text x="411.0" y="402" font-size="10" fill="#6b7280" text-anchor="middle">16</text>
+<text x="498.25" y="402" font-size="10" fill="#6b7280" text-anchor="middle">20</text>
+<text x="585.5" y="402" font-size="10" fill="#6b7280" text-anchor="middle">24</text>
+<text x="672.75" y="402" font-size="10" fill="#6b7280" text-anchor="middle">28</text>
+<text x="760.0" y="402" font-size="10" fill="#6b7280" text-anchor="middle">32</text>
+<line x1="62" y1="386.0" x2="760" y2="386.0" stroke="#d1d5db"/>
+<text x="62" y="430" font-size="9.5" fill="#6b7280">surprise-passage audits: GA champion 1.995, solo champion 2.247. GA additionally spent 2 orchestration agent calls (consolidator + rewrites). One run each, same model (gpt-5.6-luna).</text>
+</svg>
