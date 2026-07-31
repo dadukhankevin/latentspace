@@ -30,6 +30,7 @@ Usage:  python3 score.py artifact.py [--holdout]
 """
 import json
 import os
+import random
 import signal
 import sys
 
@@ -41,12 +42,26 @@ SLICE = 65536
 CANON_OFF = 100_000
 HOLD_OFF = 1_200_000
 TIME_CAP = 60
+N_SUBS = 128
 
 
 def load_slice(holdout):
+    """The scored bytes are NOT byte-identical to anything on disk: a
+    seeded 0.2% sprinkle of substitutions is applied in memory. An
+    honest compressor barely notices; an artifact that embeds or
+    fetches corpus content instead of modeling its input cannot
+    round-trip (learned from the run where a founder base64-embedded
+    the whole canonical slice and reported 0.0 bpb). compress() and
+    decompress() must be pure functions of their arguments — any
+    dependence on the corpus file, the environment, or hardcoded
+    scored content is an automatic audit failure regardless of score."""
     raw = open(DATA, "rb").read()
     off = HOLD_OFF if holdout else CANON_OFF
-    return raw[off: off + SLICE]
+    s = bytearray(raw[off: off + SLICE])
+    rng = random.Random(7 if holdout else 3)
+    for _ in range(N_SUBS):
+        s[rng.randrange(SLICE)] ^= rng.randrange(1, 256)
+    return bytes(s)
 
 
 def guarded_import(name, *args, **kwargs):
