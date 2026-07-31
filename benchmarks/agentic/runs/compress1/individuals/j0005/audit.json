@@ -1,0 +1,3 @@
+{"reproduced": true, "holdout": "FAIL: ValueError decoded length mismatch",
+ "passed": false,
+ "notes": "honest score, defective artifact: decompressor crashes on the holdout slice; excluded from consolidation until a descendant fixes round-trip robustness"}

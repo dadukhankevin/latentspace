@@ -1,0 +1,1 @@
+the base methodology, BUT replace the parent's single-byte-context arithmetic model with an evidence-gated two-byte context model: use a previous-byte model for sparse pairs, switch to a dedicated pair distribution only after repeated evidence, and rescale both levels so local repetition is learned without letting one-off contexts overfit.

@@ -1,0 +1,130 @@
+[
+ {
+  "id": "i0001",
+  "task": "compress",
+  "variation": "The base methodology, BUT when the LZ-style greedy rule chooses between emitting a literal and taking a back-reference, price the future token cost into the present choice: use the available match at each position to choose the least-cost path through the remaining input, with match-field costs included rather than maximizing the current match length alone.",
+  "score": -3.772216796875,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0001/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0002",
+  "task": "compress",
+  "variation": "The base methodology, BUT replace any fixed model rescaling threshold with a per-context threshold computed online from that context's active-symbol count, capped only by the arithmetic model's safety limit. Concentrated contexts therefore forget stale counts sooner while diverse contexts retain more history; the same live threshold is recomputed during encoding and decoding so the lossless interface remains exactly synchronized.",
+  "score": -3.997314453125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0003/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0003",
+  "task": "compress",
+  "variation": "the base methodology, BUT first transform the entire message with a global Burrows\u2013Wheeler ordering and move-to-front pass, then run-length encode zero ranks and arithmetic-code the resulting stream with one shared adaptive histogram for the whole solution; every coding decision therefore reuses state induced by the complete transformed message rather than maintaining separate per-step local models.",
+  "score": -3.0460205078125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0002/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0004",
+  "task": "compress",
+  "variation": "the base methodology, BUT use the previous two bytes as a sparse context and interpolate its observed symbol counts with the parent\u2019s adaptive order-one distribution as a backoff prior. Keep the order-one model learning and rescaling independently, while letting each second-order context accumulate direct evidence with a bounded count. This preserves sensible probabilities for rare or newly seen bigrams, yet concentrates coding mass on recurring byte triples and longer text patterns; it also avoids the parent\u2019s fixed single-byte context ceiling without storing a dense high-order table.",
+  "score": -3.381591796875,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0007/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0005",
+  "task": "compress",
+  "variation": "the base methodology, BUT encode each zero-rank run length as a zero-based symbol in the same 256-symbol arithmetic alphabet (run length r becomes r\u22121), retaining the parent's global Burrows\u2013Wheeler transform, move-to-front pass, zero-run stage, and one shared adaptive histogram otherwise.",
+  "score": -3.0889892578125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0006/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0006",
+  "task": "compress",
+  "variation": "The base methodology, BUT when the usual greedy encoder must choose between emitting a literal and taking a back-reference, price the future encoded cost in the present choice: use the available matches at each position to choose the least-cost path through the remaining input, with match-field costs included rather than maximizing the single match length alone.",
+  "score": -3.0440673828125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0005/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0007",
+  "task": "compress",
+  "variation": "the base methodology, BUT replace the parent's single-byte-context arithmetic model with an evidence-gated two-byte context model: use a previous-byte model for sparse pairs, switch to a dedicated pair distribution only after repeated evidence, and rescale both levels so local repetition is learned without letting one-off contexts overfit.",
+  "score": -3.68994140625,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0016/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0008",
+  "task": "compress",
+  "variation": "the base methodology, BUT replace the parent\u2019s adaptive arithmetic coder\u2014whose actual strategy is zero-initialized order-2 continuation counts mixed with dense uniform order-1 rows receiving +17 updates and an order-1 backoff weight of 8\u2014with a fresh coder that keeps a fixed order-0 floor, preserves the strong order-1 adaptation, and adds sparse order-2/3/4 continuation tables. Scale order-2 evidence by the active order-1 mass and progressively double that weight for orders 3 and 4, with local rescaling. This exploits repeated text and code phrases while retaining reliable lower-order predictions for novel contexts.",
+  "score": -3.075439453125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0010/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0009",
+  "task": "compress",
+  "variation": "The single deliberate mutation is to replace the parent's LZ back-reference parse with an order-3 PPM arithmetic model: at each byte, try the previous-three-byte context, then escape through the order-2, order-1, and unigram contexts, with a raw-byte fallback for unseen symbols. This makes future cost a probability-coded next-byte choice rather than a token-path search, so no back-references are emitted. The model remains adaptive, deterministic, pure, and uses only a fixed-size length header in addition to its coded stream.",
+  "score": -3.206298828125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0019/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0010",
+  "task": "compress",
+  "variation": "the base methodology, BUT replace the implemented order-2/order-1 arithmetic mixture with a sparse order-4 PPM predictor: try the longest learned byte context first, emit an adaptive escape for an unseen continuation, and back off through shorter contexts while excluding symbols already represented by higher contexts. The parent actually uses a dense order-1 table plus sparse order-2 counts with fixed backoff and rescaling; this variation keeps explicit high-order continuation counts and lets escape mass avoid impossible lower-order alternatives. A global order-0 model guarantees every byte remains representable, and all tables are learned only from prior input bytes.",
+  "score": -2.8851318359375,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0020/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0011",
+  "task": "compress",
+  "variation": "The base methodology, BUT replace any fixed model rescaling threshold with a concentration-adaptive threshold computed from each context's total mass and dominant-symbol share, capped only by the 16-bit safety limit. Concentrated contexts therefore forget stale counts sooner while diverse contexts retain more history; the adaptive rescaling threshold is recomputed during encoding and decoding so the byte-stream interface remains exactly lossless.",
+  "score": -3.14453125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0008/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0012",
+  "task": "compress",
+  "variation": "the base methodology, BUT globally Burrows\u2013Wheeler-sort the message, move repeated symbols toward the front with move-to-front coding, and run-length encode zero ranks, then arithmetic-code that token stream with Parent A\u2019s sparse two-token context interpolated with an independently adapting one-token distribution. The global transform supplies long rank runs and neighborhoods; the bounded direct context captures recurring rank triples without overcommitting on BWT/MTF disruptions, while the order-one model remains a backoff prior. Rescale the two levels independently and retain only sparse high-order rows, so the transform\u2019s global clustering and the parent\u2019s local predictive adaptation reinforce each other rather than sharing a flat histogram.",
+  "score": -3.2772216796875,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0015/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0013",
+  "task": "compress",
+  "variation": "the base methodology, BUT retain the parent's effective whole-block BWT/MTF structure while replacing its flat rank arithmetic model with separate adaptive models for token type, nonzero rank, and zero-run length. A fixed text/code-biased initial MTF alphabet reduces cold-start rank cost without depending on the input; run chunks remain capped at 255, and the stream stores the length, primary index, and coded tokens.",
+  "score": -3.0401611328125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0004/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0014",
+  "task": "compress",
+  "variation": "The base methodology, BUT code literal bytes with an adaptive order-1 arithmetic model whose state is updated over every reconstructed byte, including bytes produced by matches, and price those literal probabilities alongside match-field costs in the future-cost dynamic program. The LZ candidate set remains locality-biased, so the single deliberate change is context-adaptive literal coding rather than a different match-path rule.",
+  "score": -3.861083984375,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0009/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0015",
+  "task": "compress",
+  "variation": "the base methodology, BUT use a sentinel-safe global Burrows\u2013Wheeler transform followed by move-to-front coding, represent each zero-rank run by the least-significant binary digits of its length minus one, and arithmetic-code those run digits, nonzero ranks, and an end marker through one shared adaptive histogram; the decoder mirrors the token grammar and inverts the BWT, so the model exploits whole-message context without a large fixed run-length alphabet.",
+  "score": -3.0439453125,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0014/artifact.py",
+  "contradicts_base": false
+ },
+ {
+  "id": "i0016",
+  "task": "compress",
+  "variation": "the base methodology, BUT encode every zero-rank run with a bijective-binary RUNA/RUNB digit stream (terminated by the next literal or EOF) before feeding the unchanged global token stream to the single shared adaptive arithmetic histogram; retain the parent global BWT ordering, one global MTF pass, and whole-solution coding state.",
+  "score": -2.9759521484375,
+  "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0012/artifact.py",
+  "contradicts_base": false
+ }
+]

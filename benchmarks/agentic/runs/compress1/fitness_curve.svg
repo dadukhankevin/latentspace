@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="420" font-family="ui-monospace,monospace" style="background:#fff">
+<text x="62" y="22" font-size="13" fill="#111">compress task &#8212; fitness curve (founding round: 4 evaluations, 3 valid)</text>
+<text x="62" y="38" font-size="10" fill="#6b7280">x &#8212; evaluation order (individuals as scored) &#183; y &#8212; compressed bits per byte (lower is better)</text>
+<line x1="62" y1="342.23999999999995" x2="740" y2="342.23999999999995" stroke="#f1f5f9"/>
+<text x="54" y="345.23999999999995" font-size="10" fill="#6b7280" text-anchor="end">3.0</text>
+<line x1="62" y1="277.84" x2="740" y2="277.84" stroke="#f1f5f9"/>
+<text x="54" y="280.84" font-size="10" fill="#6b7280" text-anchor="end">3.5</text>
+<line x1="62" y1="213.44" x2="740" y2="213.44" stroke="#f1f5f9"/>
+<text x="54" y="216.44" font-size="10" fill="#6b7280" text-anchor="end">4.0</text>
+<line x1="62" y1="149.04" x2="740" y2="149.04" stroke="#f1f5f9"/>
+<text x="54" y="152.04" font-size="10" fill="#6b7280" text-anchor="end">4.5</text>
+<line x1="62" y1="84.63999999999997" x2="740" y2="84.63999999999997" stroke="#f1f5f9"/>
+<text x="54" y="87.63999999999997" font-size="10" fill="#6b7280" text-anchor="end">5.0</text>
+<line x1="62" y1="83.60959999999997" x2="740" y2="83.60959999999997" stroke="#9ca3af" stroke-dasharray="5,4"/>
+<text x="66" y="96.60959999999997" font-size="9.5" fill="#6b7280">order-0 baseline 5.008</text>
+<line x1="62" y1="297.0312" x2="740" y2="297.0312" stroke="#9ca3af" stroke-dasharray="5,4"/>
+<text x="66" y="310.0312" font-size="9.5" fill="#6b7280">zlib -9 reference 3.351 (forbidden to agents)</text>
+<path d="M 288.0 242.77847656249997 H 401.0 L 401.0 242.77847656249997 H 514.0 L 514.0 336.31255859374994" fill="none" stroke="#2563eb" stroke-width="2.5"/>
+<circle cx="288.0" cy="242.77847656249997" r="5" fill="#94a3b8" stroke="#fff" stroke-width="2"/>
+<text x="296.0" y="235.77847656249997" font-size="9.5" fill="#475569">i0001 3.772</text>
+<circle cx="401.0" cy="213.78589843749998" r="5" fill="#94a3b8" stroke="#fff" stroke-width="2"/>
+<text x="409.0" y="206.78589843749998" font-size="9.5" fill="#475569">i0002 3.997</text>
+<circle cx="514.0" cy="336.31255859374994" r="5" fill="#94a3b8" stroke="#fff" stroke-width="2"/>
+<text x="522.0" y="329.31255859374994" font-size="9.5" fill="#475569">i0003 3.046</text>
+<text x="522.0" y="352.31255859374994" font-size="10.5" fill="#2563eb" font-weight="bold">best ever 3.046</text>
+<text x="175.0" y="60.0" font-size="9.5" fill="#b91c1c">i0000 disqualified (claimed 0.0, embedded the answer key)</text>
+<text x="175.0" y="384" font-size="10" fill="#6b7280" text-anchor="middle">1</text>
+<text x="288.0" y="384" font-size="10" fill="#6b7280" text-anchor="middle">2</text>
+<text x="401.0" y="384" font-size="10" fill="#6b7280" text-anchor="middle">3</text>
+<text x="514.0" y="384" font-size="10" fill="#6b7280" text-anchor="middle">4</text>
+<line x1="62" y1="368.0" x2="740" y2="368.0" stroke="#d1d5db"/>
+</svg>

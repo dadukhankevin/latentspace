@@ -1,0 +1,1 @@
+The base methodology, BUT when the usual greedy encoder must choose between emitting a literal and taking a back-reference, price the future encoded cost in the present choice: use the available matches at each position to choose the least-cost path through the remaining input, with match-field costs included rather than maximizing the single match length alone.

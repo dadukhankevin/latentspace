@@ -1,0 +1,1 @@
+The base methodology, BUT when the LZ-style greedy rule chooses between emitting a literal and taking a back-reference, price the future token cost into the present choice: use the available match at each position to choose the least-cost path through the remaining input, with match-field costs included rather than maximizing the current match length alone.

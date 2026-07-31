@@ -1,0 +1,19 @@
+{
+ "batch": {
+  "compress": {
+   "id": "i0010",
+   "task": "compress",
+   "variation": "the base methodology, BUT replace the implemented order-2/order-1 arithmetic mixture with a sparse order-4 PPM predictor: try the longest learned byte context first, emit an adaptive escape for an unseen continuation, and back off through shorter contexts while excluding symbols already represented by higher contexts. The parent actually uses a dense order-1 table plus sparse order-2 counts with fixed backoff and rescaling; this variation keeps explicit high-order continuation counts and lets escape mass avoid impossible lower-order alternatives. A global order-0 model guarantees every byte remains representable, and all tables are learned only from prior input bytes.",
+   "score": -2.8851318359375,
+   "artifact": "/Users/daniellosey/Documents/latentspace/benchmarks/agentic/runs/compress1/individuals/j0020/artifact.py",
+   "contradicts_base": false
+  }
+ },
+ "audits": {
+  "compress": {
+   "reproduced_exactly": true,
+   "holdout_bpb": 2.02686,
+   "note": "champion i0010 (j0020): sparse order-4 PPM with escape coding and exclusion; audited PASS. Canonical 2.8851, holdout 2.0269 - transfers. Cautionary context: one individual (i0006) reached 3.0441 canonical but its decompressor CRASHES on other data (audit fail) - round-trip robustness on unseen input is a real failure mode to warn about; and the disqualified i0000 embedded the scored slice itself (fraud, killed by the scorer's in-memory byte substitutions)."
+  }
+ }
+}

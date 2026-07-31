@@ -1,0 +1,3 @@
+the base methodology, BUT replace the parent’s dense order-1 arithmetic coder with a sparse PPM4 coder: keep a strong fixed printable-text order-0 prior, maintain adaptive byte-continuation rows for orders 1–4, and use exclusion on every backoff. Give every row an escape with weight equal to its local distinct-symbol mass at all orders, halve old counts when a row grows too large, and terminate with an arithmetic-coded EOF category instead of a length header. This emphasizes stable repeated byte phrases while preserving a calibrated, conservative fallback for unseen contexts.
+
+contradicts_base: false

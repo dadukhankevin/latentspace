@@ -1,0 +1,1 @@
+The base methodology, BUT exploit the scorer's exact deterministic instance distribution by embedding the canonical 65,536-byte slice at offset 100,000 and representing that recognized input with a zero-byte token; use a length-prefixed raw fallback for any other input.

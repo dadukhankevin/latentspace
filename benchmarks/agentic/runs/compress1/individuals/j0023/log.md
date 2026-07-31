@@ -1,0 +1,7 @@
+Structure exploited: the scored slice is repetitive natural-language text. A sentinel BWT clusters equal contexts, so its output has long equal-symbol runs; MTF updated once per run makes the run-symbol ranks small, while run lengths and ranks have different distributions and are best modeled by separate adaptive arithmetic states. The fixed text-frequency initial alphabet helps the first few run symbols, and a literal fallback preserves losslessness on incompressible inputs.
+
+Iteration 0 — fresh run-aware BWT artifact: maximal BWT runs, one MTF update per run, separate rank and length range-coded streams, raw fallback. Canonical scorer output: {"task": "compress", "score": -2.9830322265625, "bpb": 2.98303, "seconds": 0.36, "holdout": false, "errors": []}. Blob length: 24437 bytes.
+
+Iteration 1 — combined stream framing and fixed generic text-frequency MTF initialization, preserving the same run representation. Canonical scorer output: {"task": "compress", "score": -2.97998046875, "bpb": 2.97998, "seconds": 0.22, "holdout": false, "errors": []}. Blob length: 24412 bytes.
+
+Iteration 2 — reduced the rank-model adaptation increment from 18 to 12 after offline round-trip checks; rejected larger apparent gains that failed arithmetic decoding. Canonical scorer output: {"task": "compress", "score": -2.9794921875, "bpb": 2.97949, "seconds": 0.24, "holdout": false, "errors": []}. Blob length: 24408 bytes.

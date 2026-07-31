@@ -1,0 +1,3 @@
+the base methodology, BUT keep the parent's fixed order-0 floor, strong order-1 adaptation, and sparse order-2/3/4 continuation tables while changing only their combination: use exclusion-based PPM backoff instead of mass-scaled mixing. At each learned context, code an escape when the next byte is absent, then descend while excluding continuations already represented by longer contexts; use the fixed order-0 model as the always-valid final distribution. Adapt continuation counts locally with bounded rescaling, so repeated phrases receive the longest-context probability without allowing lower-order rows to charge again for symbols already offered above.
+
+contradicts_base: false

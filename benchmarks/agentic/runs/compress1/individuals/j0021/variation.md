@@ -1,0 +1,1 @@
+The base methodology, BUT when the LZ-style greedy rule chooses between emitting a literal and taking a match, price the future parse cost before committing to the present choice: use the available match at each position to choose the least-cost path through the remaining input, with match-field overhead included rather than judging the current match by length alone.
