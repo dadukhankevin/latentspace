@@ -81,7 +81,8 @@ def _mask(text, rng, rate=0.25):
 class Driver:
     def __init__(self, run_dir, tasks=None, tasks_dir=None, agent_cmd=None,
                  rounds=4, max_parallel=4, agent_timeout=1200,
-                 auto_consolidate=False, python="python3", **ga_kwargs):
+                 auto_consolidate=False, python="python3", port=0,
+                 **ga_kwargs):
         self.run_dir = os.path.abspath(run_dir)
         self.tasks_dir = os.path.abspath(tasks_dir)
         self.agent_cmd = agent_cmd
@@ -95,8 +96,10 @@ class Driver:
         if not os.path.exists(base):
             shutil.copy(os.path.join(self.tasks_dir, os.pardir,
                                      "base_playbook.md"), base)
-        self.server = serve(self.run_dir, port=0, tasks=tasks, **ga_kwargs)
+        self.server = serve(self.run_dir, port=port, tasks=tasks,
+                            **ga_kwargs)
         self.port = self.server.server_address[1]
+        self._log(f"live progress: http://127.0.0.1:{self.port}/progress")
         threading.Thread(target=self.server.serve_forever,
                          daemon=True).start()
         self._job_seq = 0
@@ -342,11 +345,14 @@ def main():
     p.add_argument("--population-cap", type=int, default=12)
     p.add_argument("--consolidate-every", type=int, default=3)
     p.add_argument("--seed", type=int, default=None)
+    p.add_argument("--port", type=int, default=0,
+                   help="fixed port for the live /progress page")
     a = p.parse_args()
     Driver(a.run, tasks=a.tasks, tasks_dir=a.tasks_dir,
            agent_cmd=a.agent_cmd, rounds=a.rounds,
            max_parallel=a.max_parallel, agent_timeout=a.agent_timeout,
-           auto_consolidate=a.auto_consolidate, founders=a.founders,
+           auto_consolidate=a.auto_consolidate, port=a.port,
+           founders=a.founders,
            children=a.children, population_cap=a.population_cap,
            consolidate_every=a.consolidate_every, seed=a.seed).run()
 
