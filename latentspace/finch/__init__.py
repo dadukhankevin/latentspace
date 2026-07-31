@@ -91,7 +91,7 @@ class Environment:
 
             from ..universal.serve import serve
             import threading
-            run_dir = tempfile.mkdtemp(prefix=f"finch-{self.name}-")
+            run_dir = tempfile.mkdtemp(prefix=f"{self.name}-")
             self._server = serve(run_dir, port=0, telemetry_only=True)
             threading.Thread(target=self._server.serve_forever,
                              daemon=True).start()

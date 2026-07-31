@@ -40,7 +40,8 @@ def load_registry():
         for line in f:
             try:
                 entry = json.loads(line)
-                latest[entry["run_dir"]] = entry
+                if os.path.isdir(entry["run_dir"]):   # vanished tmp dirs
+                    latest[entry["run_dir"]] = entry
             except (json.JSONDecodeError, KeyError):
                 continue
     return sorted(latest.values(), key=lambda e: -e.get("started", 0))
