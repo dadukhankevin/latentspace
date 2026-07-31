@@ -124,3 +124,14 @@ def test_abandoned_job_leaves_no_trace():
     ga.abandon(jobs[1]["job_id"])
     assert ga.summary()["open_jobs"] == 0
     assert len(ga._living()) == 1
+
+
+def test_audit_correction_evicts_false_best_ever():
+    ga = AgenticGA(tasks=["alpha"], founders=2, seed=8)
+    jobs = ga.ask()
+    cheat = ga.tell(jobs[0]["job_id"], "cheat", 1000.0)
+    honest = ga.tell(jobs[1]["job_id"], "honest", 5.0)
+    assert ga.best["alpha"]["id"] == cheat
+    ga.retell_score(cheat, -99.0)          # audit exposes the fraud
+    assert ga.best["alpha"]["id"] == honest
+    assert ga.best["alpha"]["score"] == 5.0

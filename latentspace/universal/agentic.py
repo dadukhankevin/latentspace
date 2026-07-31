@@ -233,14 +233,25 @@ class AgenticGA:
             ind["contradicts_base"] = bool(contradicts_base)
 
     def retell_score(self, ind_id, score, artifact=None):
-        """Re-score as needed: refreshes the score and its base version."""
+        """Re-score as needed: refreshes the score and its base version.
+        If the re-scored individual currently HOLDS the best-ever
+        archive entry, the archive is rebuilt from all truthful scores —
+        a downward correction (an audit exposing a false score) must be
+        able to evict it, or consolidation would absorb a fraud (the
+        compress run's embedded-slice cheater sat at 0.0 bpb in the
+        archive after its correction until this path existed)."""
         ind = self.individuals[ind_id]
         ind["score"] = float(score)
         ind["scored_on_base"] = self.base_version
         if artifact is not None:
             ind["artifact"] = artifact
         best = self.best[ind["task"]]
-        if best is None or ind["score"] > best["score"]:
+        if best is not None and best["id"] == ind_id:
+            members = [i for i in self.individuals.values()
+                       if i["task"] == ind["task"]]
+            self.best[ind["task"]] = dict(max(members,
+                                              key=lambda i: i["score"]))
+        elif best is None or ind["score"] > best["score"]:
             self.best[ind["task"]] = dict(ind)
 
     def mark_audited(self, ind_id, passed=True):
