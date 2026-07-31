@@ -188,6 +188,8 @@ class GAService:
                                            "telemetry.jsonl"), "a") as f:
                         f.write(json.dumps(point) + "\n")
                 return {"ok": True}, False
+            if name == "page.json":
+                return self._page_data(), False
             if ga is None:
                 if name == "summary":
                     last = self.telemetry[-1] if self.telemetry else {}
@@ -268,79 +270,120 @@ class GAService:
     def _telemetry_curves(self):
         return telemetry_curves(self.telemetry)
 
+    def _page_data(self):
+        """Everything the dashboard needs, one JSON payload — the page
+        polls this instead of reloading itself."""
+        ga = self.ga
+        data = {"name": os.path.basename((self.run_dir or "run")
+                                         .rstrip("/")),
+                "up_min": round((time.time() - self.started) / 60, 1),
+                "events": [list(e) for e in self.events][-120:]}
+        if ga is None:
+            last = self.telemetry[-1] if self.telemetry else {}
+            if not data["events"]:
+                data["events"] = [
+                    ["", f"epoch {p.get('epoch')} · "
+                         f"evals {p.get('evaluations')} · "
+                         f"best {p.get('best')}"]
+                    for p in self.telemetry[-40:]]
+            data.update(
+                mode="solver",
+                series=telemetry_curves(self.telemetry), points=[],
+                summary={"reports": len(self.telemetry),
+                         "evaluations": last.get("evaluations") or 0},
+                best={k: {"score": v} for k, v in
+                      (last.get("best") or {}).items()}, living=[])
+            return data
+        series, points = agentic_curves(list(ga.individuals.values()))
+        series.update(telemetry_curves(self.telemetry))
+        living = sorted((i for i in ga.individuals.values()
+                         if i["alive"]),
+                        key=lambda i: (i["task"], -i["score"]))
+        data.update(
+            mode="agentic", summary=ga.summary(), series=series,
+            points=points,
+            best={t: {"score": b["score"], "id": b["id"],
+                      "variation": (b["variation"] or "")[:200]}
+                  for t, b in ga.best.items() if b is not None},
+            living=[{"id": i["id"], "task": i["task"],
+                     "score": i["score"], "origin": i["origin"],
+                     "stale": i["scored_on_base"] < ga.base_version,
+                     "contra": i["contradicts_base"],
+                     "exhausted": bool(i.get("exhausted")),
+                     "audited": i["audited"],
+                     "variation": (i["variation"] or "")[:200]}
+                    for i in living])
+        return data
+
     def progress_html(self):
-        with self.lock:
-            ga = self.ga
-            if ga is None:
-                curves = self._telemetry_curves()
-                curve = self.curve_svg(curves, xlabel="evaluations")
-                last = self.telemetry[-1] if self.telemetry else {}
-                mins = (time.time() - self.started) / 60
-                events = "".join(
-                    f"<tr><td>{ts}</td><td class=v>{html.escape(e)}</td>"
-                    f"</tr>" for ts, e in reversed(self.events))
-                return f"""<!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="5"><title>latentspace run</title><style>
-body{{font-family:ui-monospace,monospace;margin:1.5em;background:#111;
-color:#ddd}} table{{border-collapse:collapse;margin:.8em 0;width:100%}}
-td,th{{border:1px solid #333;padding:.25em .5em;text-align:left;
-font-size:.85em}} .v{{color:#9a9}} h1,h2{{font-size:1em;color:#7ac}}
-</style></head><body>
-<h1>solver run &mdash; {len(self.telemetry)} progress reports,
-{mins:.0f} min up &mdash; latest best: {html.escape(json.dumps(
-    last.get('best', {})))}</h1>
-<h2>fitness over time</h2>{curve}
-<h2>events</h2><table>{events}</table></body></html>"""
-            s = ga.summary()
-            living = sorted((i for i in ga.individuals.values()
-                             if i["alive"]),
-                            key=lambda i: (i["task"], -i["score"]))
-            best = {t: b for t, b in ga.best.items() if b is not None}
-            agentic_series, agentic_points = self._agentic_curves(
-                list(ga.individuals.values()))
-            agentic_series.update(self._telemetry_curves())
-            curve = self.curve_svg(agentic_series, agentic_points,
-                                   xlabel="evaluation order")
-        rows = "".join(
-            f"<tr><td>{i['id']}</td><td>{i['task']}</td>"
-            f"<td>{i['score']:.5f}</td><td>{i['origin']}</td>"
-            f"<td>{'yes' if i['scored_on_base'] < ga.base_version else ''}"
-            f"</td><td>{'!' if i['contradicts_base'] else ''}</td>"
-            f"<td class=v>{html.escape(i['variation'][:160])}</td></tr>"
-            for i in living)
-        bests = "".join(
-            f"<tr><td>{t}</td><td><b>{b['score']:.5f}</b></td>"
-            f"<td>{b['id']}</td>"
-            f"<td class=v>{html.escape((b['variation'] or '')[:160])}</td>"
-            f"</tr>" for t, b in sorted(best.items()))
-        events = "".join(f"<tr><td>{ts}</td>"
-                         f"<td class=v>{html.escape(e)}</td></tr>"
-                         for ts, e in reversed(self.events))
-        mins = (time.time() - self.started) / 60
-        return f"""<!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="5"><title>agentic run</title><style>
-body{{font-family:ui-monospace,monospace;margin:1.5em;background:#111;
-color:#ddd}} table{{border-collapse:collapse;margin:.8em 0;width:100%}}
-td,th{{border:1px solid #333;padding:.25em .5em;text-align:left;
-font-size:.85em}} th{{background:#1d1d1d}} .v{{color:#9a9;max-width:44em;
-overflow:hidden;white-space:nowrap;text-overflow:ellipsis}}
-h1,h2{{font-size:1em;color:#7ac}} .k{{color:#c96}}</style></head><body>
-<h1>agentic run &mdash; round {s['round']}, base v{s['base_version']},
-population {s['population']}, {s['stale']} stale,
-{s['open_jobs']} jobs in flight, {mins:.0f} min up</h1>
-<h2>best ever per task</h2>
-<table><tr><th>task</th><th>score</th><th>id</th><th>variation</th></tr>
-{bests}</table>
-<h2>fitness curve</h2>
-{curve}
-<h2>living population</h2>
-<table><tr><th>id</th><th>task</th><th>score</th><th>origin</th>
-<th>stale</th><th>contra</th><th>variation</th></tr>{rows}</table>
-<h2>events (newest first)</h2>
-<table>{events}</table></body></html>"""
+        from .ui import page
+        return page("latentspace run", PROGRESS_BODY, PROGRESS_JS)
 
 
-GETS = {"summary", "due", "batch", "stale", "contradictions"}
+PROGRESS_BODY = """
+<div class="hdr"><h1 id="title">run</h1>
+<span class="pill live"><span class="dot"></span><span id="mode">live</span></span>
+<span class="sub" id="up"></span></div>
+<div class="tiles" id="tiles"></div>
+<div class="panel"><h2>fitness over time</h2>
+<div class="chartwrap"><div id="chart"></div><div class="tip"></div></div></div>
+<div class="panel" id="poppanel" style="display:none"><h2>living population</h2>
+<div style="overflow-x:auto"><table><thead><tr><th>id</th><th>task</th>
+<th>score</th><th>origin</th><th>flags</th><th>variation</th></tr></thead>
+<tbody id="pop"></tbody></table></div></div>
+<div class="panel"><h2>event stream</h2><div class="events" id="events"></div></div>
+"""
+
+PROGRESS_JS = """
+async function tick(){
+  let d; try{d=await (await fetch('page.json')).json();}catch(e){return;}
+  document.title=d.name;
+  document.getElementById('title').textContent=d.name;
+  document.getElementById('mode').textContent=d.mode;
+  document.getElementById('up').textContent=d.up_min+' min up';
+  const s=d.summary||{}, tiles=[];
+  for(const [task,b] of Object.entries(d.best||{}))
+    tiles.push(['hot', fmt(b.score), 'best · '+task]);
+  if(d.mode==='agentic'){
+    tiles.push(['', s.population, 'population'],
+      ['', s.open_jobs, 'jobs in flight'],
+      ['', 'v'+s.base_version, 'base playbook'],
+      ['', s.stale, 'stale scores'],
+      ['', (d.points||[]).length, 'evaluations']);
+  } else {
+    tiles.push(['', s.reports, 'progress reports'],
+      ['', s.evaluations, 'evaluations']);
+  }
+  document.getElementById('tiles').innerHTML=tiles.map(t=>
+    '<div class="tile '+t[0]+'"><div class="v">'+esc(t[1])+
+    '</div><div class="k">'+esc(t[2])+'</div></div>').join('');
+  drawChart(document.getElementById('chart'), d.series||{}, d.points||[],
+    {xlabel: d.mode==='agentic'?'evaluation order':'evaluations'});
+  if(d.mode==='agentic'&&(d.living||[]).length){
+    document.getElementById('poppanel').style.display='';
+    const max=Math.max(...d.living.map(i=>i.score));
+    const min=Math.min(...d.living.map(i=>i.score));
+    document.getElementById('pop').innerHTML=d.living.map(i=>{
+      const w=max>min?4+86*(i.score-min)/(max-min):45;
+      const flags=[i.stale?'stale':'',i.contra?'⚡contra':'',
+        i.exhausted?'exhausted':'',i.audited?'✓audited':''].filter(Boolean);
+      return '<tr><td class="mono2">'+esc(i.id)+'</td><td>'+esc(i.task)+
+      '</td><td><span class="scorebar"><i style="width:'+w+'px"></i></span>'+
+      fmt(i.score)+'</td><td><span class="badge '+esc(i.origin)+'">'+
+      esc(i.origin)+'</span></td><td class="dim">'+flags.join(' ')+
+      '</td><td class="dim">'+esc(i.variation.slice(0,140))+'…</td></tr>';
+    }).join('');
+  }
+  document.getElementById('events').innerHTML=(d.events||[]).slice()
+    .reverse().map(e=>'<div><span class="t">'+esc(e[0])+'</span>'+
+    esc(e[1])+'</div>').join('');
+}
+tick(); setInterval(tick, 2000);
+"""
+
+
+GETS = {"summary", "due", "batch", "stale", "contradictions",
+        "page.json"}
 POSTS = {"ask", "tell", "abandon", "consolidated", "rewrite", "rescore",
          "audit", "telemetry"}
 

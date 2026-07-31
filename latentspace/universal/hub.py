@@ -87,40 +87,74 @@ def run_status(entry):
     return info
 
 
-def hub_html():
+def _downsample(curve, n=70):
+    if len(curve) <= n:
+        return curve
+    step = len(curve) / n
+    out = [curve[int(i * step)] for i in range(n)]
+    if out[-1] != curve[-1]:
+        out.append(curve[-1])
+    return out
+
+
+def hub_data():
+    """Every registered run as one JSON payload for the board."""
     cards = []
     for entry in load_registry():
         info = run_status(entry)
-        badge = ('<span style="color:#7c7">&#9679; LIVE</span>'
-                 if info["live"] else
-                 '<span style="color:#777">&#9632; finished</span>')
-        title = html.escape(info["name"])
-        if info["live"]:
-            title = (f'<a href="http://127.0.0.1:{info["port"]}/progress" '
-                     f'style="color:#7ac">{title}</a>')
-        best = " &#183; ".join(f"{html.escape(str(k))}: <b>{v}</b>"
-                               for k, v in info["best"].items()) or "&#8212;"
-        curve = curve_svg(info["series"], xlabel="evaluations",
-                          w=340, h=120, labels=False)
-        cards.append(
-            f'<div class="card"><div class="head">{badge} '
-            f'<span class="t">{title}</span> '
-            f'<span class="k">{info["kind"]}, '
-            f'{info["evaluations"]} evals</span></div>'
-            f'<div class="best">{best}</div>{curve}</div>')
-    body = "".join(cards) or "<p>no runs registered yet</p>"
-    return f"""<!doctype html><html><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="5"><title>super evolution</title><style>
-body{{font-family:ui-monospace,monospace;margin:1.5em;background:#111;
-color:#ddd}} h1{{font-size:1.05em;color:#7ac}}
-.grid{{display:flex;flex-wrap:wrap;gap:14px}}
-.card{{background:#181818;border:1px solid #333;padding:10px 12px;
-border-radius:6px}}
-.head{{margin-bottom:4px;font-size:.9em}} .t{{font-weight:bold}}
-.k{{color:#888;font-size:.85em}} .best{{color:#9a9;font-size:.85em;
-margin-bottom:6px}} a{{text-decoration:none}}</style></head><body>
-<h1>super evolution &#8212; every run on this machine</h1>
-<div class="grid">{body}</div></body></html>"""
+        cards.append({
+            "name": info["name"], "live": info["live"],
+            "port": info["port"], "kind": info["kind"],
+            "evaluations": info["evaluations"],
+            "best": info["best"],
+            "series": {k: _downsample(v)
+                       for k, v in info["series"].items()}})
+    cards.sort(key=lambda c: (not c["live"]))
+    return {"cards": cards}
+
+
+HUB_BODY = """
+<div class="hdr"><h1>SUPER EVOLUTION</h1>
+<span class="sub">every run on this machine — live and finished</span>
+<span class="pill" id="count"></span></div>
+<div class="grid" id="grid"></div>
+"""
+
+HUB_JS = """
+async function tick(){
+  let d; try{d=await (await fetch('data.json')).json();}catch(e){return;}
+  const live=d.cards.filter(c=>c.live).length;
+  document.getElementById('count').textContent=
+    d.cards.length+' runs · '+live+' live';
+  const grid=document.getElementById('grid');
+  grid.innerHTML=d.cards.map((c,idx)=>{
+    const pill=c.live?
+      '<span class="pill live"><span class="dot"></span>LIVE</span>':
+      '<span class="pill"><span class="dot"></span>finished</span>';
+    const name=c.live?
+      '<a href="http://127.0.0.1:'+c.port+'/progress">'+esc(c.name)+'</a>':
+      esc(c.name);
+    const best=Object.entries(c.best||{}).slice(0,3).map(([k,v])=>
+      esc(k)+' <b style="color:var(--ink)">'+fmt(typeof v==='object'?v.score:v)+
+      '</b>').join(' · ')||'—';
+    return '<div class="card">'+
+      '<div style="display:flex;justify-content:space-between;'+
+      'align-items:center"><span class="name">'+name+'</span>'+pill+'</div>'+
+      '<div class="meta">'+esc(c.kind)+' · '+c.evaluations+' evaluations · '+
+      best+'</div><div id="mc'+idx+'"></div></div>';
+  }).join('')||'<p class="dim">no runs registered yet</p>';
+  d.cards.forEach((c,idx)=>{
+    drawChart(document.getElementById('mc'+idx), c.series||{}, null,
+      {mini:true, w:330, h:96});
+  });
+}
+tick(); setInterval(tick, 3000);
+"""
+
+
+def hub_html():
+    from .ui import page
+    return page("super evolution", HUB_BODY, HUB_JS)
 
 
 def main():
@@ -130,12 +164,17 @@ def main():
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            page = hub_html().encode()
+            if self.path.startswith("/data.json"):
+                payload = json.dumps(hub_data()).encode()
+                ctype = "application/json"
+            else:
+                payload = hub_html().encode()
+                ctype = "text/html; charset=utf-8"
             self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(page)))
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
-            self.wfile.write(page)
+            self.wfile.write(payload)
 
         def log_message(self, fmt, *args):
             pass

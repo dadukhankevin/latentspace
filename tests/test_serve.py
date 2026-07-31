@@ -80,7 +80,11 @@ def test_progress_page_renders(server):
     with urllib.request.urlopen(
             f"http://127.0.0.1:{call.port}/progress") as r:
         page = r.read().decode()
-    assert "living population" in page and "tell i0000" in page
+    assert "drawChart" in page and "living population" in page
+    data = call("page.json")
+    assert data["mode"] == "agentic"
+    assert data["living"][0]["id"] == "i0000"
+    assert any("tell i0000" in e[1] for e in data["events"])
 
 
 def test_errors_are_json_not_crashes(server):
@@ -107,7 +111,11 @@ def test_telemetry_only_dashboard_and_live_progress(tmp_path):
           progress=cb, progress_every=1)
     with urllib.request.urlopen(cb.url) as r:
         page = r.read().decode()
-    assert "fitness over time" in page and "fn0" in page
+    assert "drawChart" in page and "fitness over time" in page
+    with urllib.request.urlopen(cb.url.replace("/progress",
+                                               "/page.json")) as r:
+        data = json.loads(r.read())
+    assert data["mode"] == "solver" and "fn0" in data["series"]
     # telemetry persisted alongside the run
     lines = open(tmp_path / "live" / "telemetry.jsonl").read().splitlines()
     assert len(lines) >= 2
@@ -121,11 +129,9 @@ def test_agentic_page_uses_multiseries_curve(server):
     for i, job in enumerate(jobs):
         call("tell", {"job_id": job["job_id"], "variation": f"v{i}",
                       "score": float(i)})
-    import urllib.request
-    with urllib.request.urlopen(
-            f"http://127.0.0.1:{call.port}/progress") as r:
-        page = r.read().decode()
-    assert "alpha" in page and "beta" in page   # one labeled line per task
+    data = call("page.json")
+    assert set(data["series"]) == {"alpha", "beta"}   # one line per task
+    assert all(len(c) >= 2 for c in data["series"].values())
 
 
 def test_hub_shows_every_registered_run(tmp_path, monkeypatch):
@@ -152,10 +158,13 @@ def test_hub_shows_every_registered_run(tmp_path, monkeypatch):
             f.write(json.dumps({"epoch": e, "evaluations": e * 10,
                                 "best": {"fn0": -1.0 + e * 0.1}}) + "\n")
     register_run(str(so_dir), port=1)
-    page = hub.hub_html()
-    assert "compress_demo" in page and "apple_solver" in page
-    assert "finished" in page
-    assert page.count('class="card"') == 2
+    data = hub.hub_data()
+    names = [c["name"] for c in data["cards"]]
+    assert names == ["compress_demo", "apple_solver"] or \
+        sorted(names) == ["apple_solver", "compress_demo"]
+    assert all(not c["live"] for c in data["cards"])
+    assert data["cards"][0]["series"]           # mini curves present
+    assert "drawChart" in hub.hub_html()
 
 
 def test_serve_registers_in_global_registry(tmp_path, monkeypatch):
