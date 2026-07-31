@@ -91,3 +91,38 @@ def test_errors_are_json_not_crashes(server):
     with pytest.raises(urllib.error.HTTPError) as e:
         call("tell", {"job_id": "no-such-job", "variation": "x", "score": 1})
     assert e.value.code in (400, 404)
+
+
+def test_telemetry_only_dashboard_and_live_progress(tmp_path):
+    import numpy as np
+    from latentspace.universal import live_progress, solve
+
+    cb = live_progress(run_dir=str(tmp_path / "live"))
+
+    def fitness(phenotypes):        # solve()'s contract: batched
+        return -(phenotypes.flatten(1) ** 2).mean(dim=1)
+
+    solve(fitness, output_shape=(8,), epochs=4, children=4,
+          population_cap=8, founders=2, device="cpu", seed=0,
+          progress=cb, progress_every=1)
+    with urllib.request.urlopen(cb.url) as r:
+        page = r.read().decode()
+    assert "fitness over time" in page and "fn0" in page
+    # telemetry persisted alongside the run
+    lines = open(tmp_path / "live" / "telemetry.jsonl").read().splitlines()
+    assert len(lines) >= 2
+    assert "best" in json.loads(lines[-1])
+    cb.server.shutdown()
+
+
+def test_agentic_page_uses_multiseries_curve(server):
+    call, _ = server
+    jobs = call("ask", {})
+    for i, job in enumerate(jobs):
+        call("tell", {"job_id": job["job_id"], "variation": f"v{i}",
+                      "score": float(i)})
+    import urllib.request
+    with urllib.request.urlopen(
+            f"http://127.0.0.1:{call.port}/progress") as r:
+        page = r.read().decode()
+    assert "alpha" in page and "beta" in page   # one labeled line per task

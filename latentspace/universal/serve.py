@@ -48,13 +48,21 @@ from .agentic import AgenticGA
 
 
 class GAService:
-    """The engine plus the lock and the save-after-every-mutation rule."""
+    """The engine plus the lock and the save-after-every-mutation rule.
 
-    def __init__(self, ga, state_path):
+    Also the ONE telemetry sink for every kind of run: agentic runs
+    feed it through tell/audit/consolidated, and the tensor solver
+    feeds it through POST /telemetry (see live_progress below), so the
+    /progress dashboard is the same page for every evolutionary problem
+    this library runs. ga may be None (telemetry-only mode)."""
+
+    def __init__(self, ga, state_path, run_dir=None):
         self.ga = ga
         self.state_path = state_path
+        self.run_dir = run_dir
         self.lock = threading.Lock()
         self.events = deque(maxlen=300)
+        self.telemetry = []
         self.started = time.time()
 
     def event(self, text):
@@ -63,6 +71,23 @@ class GAService:
     def call(self, name, body):
         ga = self.ga
         with self.lock:
+            if name == "telemetry":
+                point = {"epoch": body.get("epoch"),
+                         "evaluations": body.get("evaluations"),
+                         "best": body.get("best", {})}
+                self.telemetry.append(point)
+                if self.run_dir:
+                    with open(os.path.join(self.run_dir,
+                                           "telemetry.jsonl"), "a") as f:
+                        f.write(json.dumps(point) + "\n")
+                return {"ok": True}, False
+            if ga is None:
+                if name == "summary":
+                    last = self.telemetry[-1] if self.telemetry else {}
+                    return {"telemetry_points": len(self.telemetry),
+                            "best": last.get("best", {})}, False
+                raise KeyError(f"{name} needs an engine (telemetry-only "
+                               "server)")
             if name == "summary":
                 return ga.summary(), False
             if name == "due":
@@ -126,66 +151,122 @@ class GAService:
 
     # ------------------------------------------------------ progress page
 
-    def fitness_svg(self, individuals):
-        """Best-ever fitness curve over evaluation order, dependency-free.
-        Scores <= -90 (disqualified / failed) are excluded from the
-        curve but counted on the x axis."""
-        pts, curve, best, n = [], [], None, 0
+    PALETTE = ["#7ac", "#c96", "#9c7", "#b8a", "#8cc", "#ca8"]
+
+    def curve_svg(self, series, points=None, xlabel="evaluations"):
+        """Fitness-over-time chart, dependency-free. series maps a name
+        to its best-so-far [(x, y), ...] step curve — one line per task
+        or fitness function, same page for agentic and tensor runs.
+        points are optional (x, y, label) markers (agentic
+        individuals)."""
+        series = {k: v for k, v in series.items() if len(v) >= 2}
+        if not series:
+            return "<p>curve appears after two scored points</p>"
+        allx = [x for c in series.values() for x, _ in c]
+        ally = [y for c in series.values() for _, y in c]
+        if points:
+            ally += [p[1] for p in points]
+        lo, hi = min(ally), max(ally)
+        pad = max((hi - lo) * 0.15, 1e-9)
+        lo, hi = lo - pad, hi + pad
+        W, H, ML, MB = 720, 260, 62, 28
+        xmax = max(allx) * 1.05 + 1e-9
+
+        def X(x):
+            return ML + (W - ML - 14) * x / xmax
+
+        def Y(y):
+            return 12 + (H - 12 - MB) * (hi - y) / (hi - lo)
+
+        s = [f'<svg width="{W}" height="{H}" style="background:#161616;'
+             'border:1px solid #333">',
+             f'<text x="{ML}" y="{H-8}" font-size="10" fill="#888">'
+             f'x &#8212; {xlabel} &#183; y &#8212; best score so far '
+             '(higher is better)</text>']
+        for i, (name, curve) in enumerate(sorted(series.items())):
+            color = self.PALETTE[i % len(self.PALETTE)]
+            path = ""
+            for j, (x, y) in enumerate(curve):
+                path += (f"M {X(x):.1f} {Y(y):.1f} " if j == 0
+                         else f"L {X(x):.1f} {Y(curve[j-1][1]):.1f} "
+                              f"L {X(x):.1f} {Y(y):.1f} ")
+            s.append(f'<path d="{path}" fill="none" stroke="{color}" '
+                     'stroke-width="2"/>')
+            lx, ly = curve[-1]
+            s.append(f'<text x="{X(lx)-4:.1f}" y="{Y(ly)-6:.1f}" '
+                     f'font-size="10" fill="{color}" text-anchor="end">'
+                     f'{html.escape(str(name))} {ly:.5g}</text>')
+        for x, y, lab in (points or []):
+            s.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="3.5" '
+                     'fill="#666"/>')
+            s.append(f'<text x="{X(x)+5:.1f}" y="{Y(y)+11:.1f}" '
+                     f'font-size="8.5" fill="#777">{lab}</text>')
+        for gy in (lo + pad, hi - pad):
+            s.append(f'<text x="{ML-6}" y="{Y(gy)+3:.1f}" font-size="9" '
+                     f'fill="#888" text-anchor="end">{gy:.5g}</text>')
+        s.append("</svg>")
+        return "".join(s)
+
+    def _agentic_curves(self, individuals):
+        """Per-task best-ever step curves over tell order; disqualified
+        scores (<= -90) count on the x axis but not in the curves."""
+        series, points, best, n = {}, [], {}, 0
         for ind in sorted(individuals, key=lambda i: i["id"]):
             n += 1
             if ind["score"] <= -90:
                 continue
-            pts.append((n, ind["score"], ind["id"]))
-            best = ind["score"] if best is None else max(best,
-                                                         ind["score"])
-            curve.append((n, best))
-        if len(pts) < 2:
-            return ""
-        ys = [p[1] for p in pts]
-        lo, hi = min(ys), max(ys)
-        pad = max((hi - lo) * 0.15, 1e-9)
-        lo, hi = lo - pad, hi + pad
-        W, H, ML, MB = 720, 240, 60, 26
-        xmax = n + 1
+            t = ind["task"]
+            points.append((n, ind["score"], ind["id"]))
+            if t not in best or ind["score"] > best[t]:
+                best[t] = ind["score"]
+            series.setdefault(t, []).append((n, best[t]))
+        return series, points
 
-        def X(x):
-            return ML + (W - ML - 12) * x / xmax
-
-        def Y(y):
-            return 10 + (H - 10 - MB) * (hi - y) / (hi - lo)
-
-        s = [f'<svg width="{W}" height="{H}" style="background:#161616;'
-             'border:1px solid #333">']
-        s.append(f'<text x="{ML}" y="{H-8}" font-size="10" fill="#888">'
-                 'x &#8212; evaluation order &#183; y &#8212; score '
-                 '(higher is better) &#183; line = best ever</text>')
-        path = ""
-        for i, (x, y) in enumerate(curve):
-            path += (f"M {X(x):.1f} {Y(y):.1f} " if i == 0
-                     else f"L {X(x):.1f} {Y(curve[i-1][1]):.1f} "
-                          f"L {X(x):.1f} {Y(y):.1f} ")
-        s.append(f'<path d="{path}" fill="none" stroke="#7ac" '
-                 'stroke-width="2"/>')
-        for x, y, lab in pts:
-            s.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="4" '
-                     'fill="#888"/>')
-            s.append(f'<text x="{X(x)+6:.1f}" y="{Y(y)-6:.1f}" '
-                     f'font-size="9" fill="#9a9">{lab} {y:.4g}</text>')
-        for gy in (lo + pad, hi - pad):
-            s.append(f'<text x="{ML-6}" y="{Y(gy)+3:.1f}" font-size="9" '
-                     f'fill="#888" text-anchor="end">{gy:.4g}</text>')
-        s.append("</svg>")
-        return "".join(s)
+    def _telemetry_curves(self):
+        series = {}
+        for point in self.telemetry:
+            x = point.get("evaluations") or point.get("epoch") or 0
+            for name, score in (point.get("best") or {}).items():
+                if score is None:
+                    continue
+                cur = series.setdefault(name, [])
+                y = max(score, cur[-1][1]) if cur else score
+                cur.append((x, y))
+        return series
 
     def progress_html(self):
         with self.lock:
             ga = self.ga
+            if ga is None:
+                curves = self._telemetry_curves()
+                curve = self.curve_svg(curves, xlabel="evaluations")
+                last = self.telemetry[-1] if self.telemetry else {}
+                mins = (time.time() - self.started) / 60
+                events = "".join(
+                    f"<tr><td>{ts}</td><td class=v>{html.escape(e)}</td>"
+                    f"</tr>" for ts, e in reversed(self.events))
+                return f"""<!doctype html><html><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="5"><title>latentspace run</title><style>
+body{{font-family:ui-monospace,monospace;margin:1.5em;background:#111;
+color:#ddd}} table{{border-collapse:collapse;margin:.8em 0;width:100%}}
+td,th{{border:1px solid #333;padding:.25em .5em;text-align:left;
+font-size:.85em}} .v{{color:#9a9}} h1,h2{{font-size:1em;color:#7ac}}
+</style></head><body>
+<h1>solver run &mdash; {len(self.telemetry)} progress reports,
+{mins:.0f} min up &mdash; latest best: {html.escape(json.dumps(
+    last.get('best', {})))}</h1>
+<h2>fitness over time</h2>{curve}
+<h2>events</h2><table>{events}</table></body></html>"""
             s = ga.summary()
             living = sorted((i for i in ga.individuals.values()
                              if i["alive"]),
                             key=lambda i: (i["task"], -i["score"]))
             best = {t: b for t, b in ga.best.items() if b is not None}
-            curve = self.fitness_svg(list(ga.individuals.values()))
+            agentic_series, agentic_points = self._agentic_curves(
+                list(ga.individuals.values()))
+            agentic_series.update(self._telemetry_curves())
+            curve = self.curve_svg(agentic_series, agentic_points,
+                                   xlabel="evaluation order")
         rows = "".join(
             f"<tr><td>{i['id']}</td><td>{i['task']}</td>"
             f"<td>{i['score']:.5f}</td><td>{i['origin']}</td>"
@@ -227,7 +308,7 @@ population {s['population']}, {s['stale']} stale,
 
 GETS = {"summary", "due", "batch", "stale", "contradictions"}
 POSTS = {"ask", "tell", "abandon", "consolidated", "rewrite", "rescore",
-         "audit"}
+         "audit", "telemetry"}
 
 
 def make_handler(service):
@@ -273,23 +354,67 @@ def make_handler(service):
     return Handler
 
 
-def serve(run_dir, port=0, tasks=None, **ga_kwargs):
+def serve(run_dir, port=0, tasks=None, telemetry_only=False, **ga_kwargs):
     """Build (or load) the run's engine and return a ready server.
-    port=0 picks a free port. Caller runs .serve_forever()."""
-    state_path = os.path.join(run_dir, "state.json")
-    if os.path.exists(state_path):
-        ga = AgenticGA.load(state_path)
+    port=0 picks a free port. Caller runs .serve_forever().
+    telemetry_only=True starts the same server with no engine — the
+    dashboard for tensor solve() runs (see live_progress)."""
+    os.makedirs(run_dir, exist_ok=True)
+    if telemetry_only:
+        ga, state_path = None, None
     else:
-        if not tasks:
-            raise SystemExit("no state.json — pass --tasks to create a run")
-        os.makedirs(run_dir, exist_ok=True)
-        ga = AgenticGA(tasks=tasks, **ga_kwargs)
-        ga.save(state_path)
-    service = GAService(ga, state_path)
+        state_path = os.path.join(run_dir, "state.json")
+        if os.path.exists(state_path):
+            ga = AgenticGA.load(state_path)
+        else:
+            if not tasks:
+                raise SystemExit("no state.json — pass --tasks to "
+                                 "create a run")
+            ga = AgenticGA(tasks=tasks, **ga_kwargs)
+            ga.save(state_path)
+    service = GAService(ga, state_path, run_dir=run_dir)
     server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(service))
+    server.service = service
     with open(os.path.join(run_dir, "server.json"), "w") as f:
         json.dump({"port": server.server_address[1], "pid": os.getpid()}, f)
     return server
+
+
+def live_progress(run_dir=None, port=0, names=None):
+    """One dashboard for every run: pass the result as solve()'s
+    progress= callback and open the printed URL.
+
+        from latentspace.universal import solve, live_progress
+        solve(fitness_fns, output_shape=(64, 64), epochs=10_000,
+              progress=live_progress())
+
+    Starts a telemetry-only reporting server (same /progress page the
+    agentic substrate uses) in a daemon thread and returns a callback
+    with solve()'s progress signature. names labels the fitness
+    functions on the chart (default fn0, fn1, ...)."""
+    import tempfile
+    run_dir = run_dir or tempfile.mkdtemp(prefix="latentspace-live-")
+    server = serve(run_dir, port=port, telemetry_only=True)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{server.server_address[1]}/progress"
+    print(f"[latentspace] live progress: {url}", flush=True)
+
+    def progress(epoch, epochs, evaluations, best_pheno, best_score):
+        best = {}
+        for i, score in enumerate(best_score):
+            label = names[i] if names and i < len(names) else f"fn{i}"
+            value = float(score)
+            if value == value and abs(value) != float("inf"):
+                best[label] = value
+        server.service.handle("telemetry", {
+            "epoch": int(epoch), "evaluations": int(evaluations),
+            "best": best})
+        server.service.event(f"epoch {epoch}/{epochs} "
+                             f"evals={evaluations} best={best}")
+
+    progress.url = url
+    progress.server = server
+    return progress
 
 
 def main():
@@ -302,8 +427,11 @@ def main():
     p.add_argument("--population-cap", type=int, default=12)
     p.add_argument("--consolidate-every", type=int, default=3)
     p.add_argument("--seed", type=int, default=None)
+    p.add_argument("--telemetry", action="store_true",
+                   help="no engine: dashboard-only server for solver runs")
     a = p.parse_args()
-    server = serve(a.run, a.port, a.tasks, founders=a.founders,
+    server = serve(a.run, a.port, a.tasks, telemetry_only=a.telemetry,
+                   founders=a.founders,
                    children=a.children, population_cap=a.population_cap,
                    consolidate_every=a.consolidate_every, seed=a.seed)
     print(f"[serve] run={a.run} port={server.server_address[1]}",

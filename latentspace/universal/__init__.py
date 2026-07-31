@@ -35,6 +35,7 @@ opponents the new design has to beat, no longer part of the library.
 """
 from .agentic import AgenticGA
 from .architectures import build_mlp, register_architecture, resolve
+from .serve import live_progress
 from .ga import (
     Distillation,
     GAResult,
@@ -60,5 +61,5 @@ __all__ = [
     "make_random_speciation",
     "register_substrate", "Distillation",
     "register_architecture", "resolve", "build_mlp",
-    "AgenticGA",
+    "AgenticGA", "live_progress",
 ]

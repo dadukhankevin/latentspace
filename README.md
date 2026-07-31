@@ -134,6 +134,25 @@ constant output is a degenerate solution and evolution has nothing to
 select on. Register an architecture with its final layer scaled up (~10x)
 for such problems; `benchmarks/probe_walker.py` is the worked example.
 
+## One dashboard for every run
+
+Every evolutionary problem this library runs — tensor or agentic —
+reports to the same live page. The agentic engine serves it natively;
+the tensor solver plugs in through one argument:
+
+```python
+from latentspace.universal import solve, live_progress
+
+solve(fitness_fns, output_shape=(64, 64), epochs=10_000,
+      progress=live_progress())        # prints http://127.0.0.1:PORT/progress
+```
+
+The page self-refreshes: fitness-over-time (one labeled line per task
+or fitness function, best-so-far step curves), and for agentic runs the
+living population, per-task champions, staleness, contradiction flags,
+and the event feed. Telemetry also lands in the run directory as
+`telemetry.jsonl`, so a crashed dashboard loses nothing.
+
 ## The agentic substrate (ask/tell)
 
 The most extreme decoder the modular frame admits: **an agent**. Genes
@@ -164,11 +183,22 @@ idea further, or standing pat (an emptied variation would be a clone of
 the base; in text, decay-to-zero collapses diversity instead of
 preventing double-counting). Scores are not automatically refreshed
 after a base edit; the engine marks them stale and the orchestrator
-re-scores as needed. The working harness — conduct rules, prompts, audit
-procedure — is the `agentic-ga` skill in
-[.claude/skills/agentic-ga/](.claude/skills/agentic-ga/SKILL.md); the
-testbed (heuristic synthesis for bin packing and TSP tour construction,
-deterministic scorers with held-out audit seeds) is in
+re-scores as needed.
+
+**The skill is a first-class interface of this library**, not an
+add-on: [.claude/skills/agentic-ga/SKILL.md](.claude/skills/agentic-ga/SKILL.md)
+is the agentic substrate's operating manual — the conduct rules
+(one base playbook; canonical scorers are never edited; every score
+ships with its artifact; audit-on-influence; consolidation absorbs
+audited winners only), the orchestration procedure, and the prompt
+contracts. An agent session that loads it can run the whole substrate;
+the Python in `agentic.py`/`serve.py` enforces the laws the skill
+promises. The measured first result of running it this way — a
+population with a consolidating playbook beating autoresearch-style
+solo iteration at equal cost on the compress task — is FINDINGS round
+thirty-nine. The testbed (heuristic synthesis for bin packing and TSP
+tour construction plus the compress and lm tasks, deterministic scorers
+with held-out audit seeds) is in
 [benchmarks/agentic/](benchmarks/agentic/).
 
 It also runs itself. `python3 -m latentspace.universal.serve` holds the

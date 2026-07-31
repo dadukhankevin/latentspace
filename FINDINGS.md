@@ -4369,3 +4369,52 @@ paired run is suggestive, not proven. The same-model correlation also
 means both sides share blind spots. The ledger row moves from
 "scaffolding" to "first matched comparison won, n=1" and nothing
 stronger until repetition and a second task.
+
+## Round forty — one umbrella: skill, dashboard, and the unification pass (2026-07-30)
+
+Consolidation of the day's architecture into first-class library
+surface, per Daniel's direction ("make sure the skill is a first class
+property... the normal solve function wires to the same server so the
+live dashboard works for all evolutionary problems"):
+
+- **The skill is now documented as a library interface**, equal in rank
+  to solve() and AgenticGA: the operating manual an agent session loads
+  to run the agentic substrate, with the Python engine enforcing the
+  laws the skill promises. README says so explicitly.
+- **One dashboard for every run.** live_progress() is exported from
+  latentspace.universal: pass it as solve()'s progress= callback and
+  the tensor solver reports to the same server and the same /progress
+  page the agentic substrate uses (telemetry-only server mode, POST
+  /telemetry, persisted to telemetry.jsonl). Tested end to end with a
+  real solve() run.
+- **Dashboard upgraded**: the fitness chart is now a proper
+  fitness-over-time plot — one labeled best-so-far step line per task
+  (agentic) or per fitness function (solver telemetry), shared axes
+  rules (x = evaluations, y = best score so far), individual markers
+  for agentic evaluations, disqualified scores excluded from curves.
+
+Filed for later (Daniel's next directions, discussed not built):
+
+- **Distributed evolution.** Multiple machines (Mac minis, GPU boxes)
+  working one problem, synced through the same reporting server — each
+  client asks for jobs and tells results over the same HTTP API the
+  local run already uses. The architecture is most of the way there by
+  accident of the ask/tell design; the genuinely new parts are
+  (a) binding beyond localhost with an auth token, (b) artifact
+  transfer (shared filesystem or an upload route — scores are
+  reproducible only if the auditor can reach the artifact), and
+  (c) job leases with timeouts so a dead client's open jobs return to
+  the pool. The engine's single-process lock is fine for tens of
+  clients.
+- **Finch unification ("Finch 4").** Daniel's proposal: fold Finch's
+  layer-based composition into this library and ship the union as
+  Finch 4. The natural seam: Finch's Sequential-style layer pipeline
+  becomes the phase-two composition surface over BOTH engines (the
+  tensor epoch and the agentic round are already stage sequences in
+  disguise), with latentspace's thesis (one learning substrate,
+  fitness shares, vet-then-consolidate) as the fixed frame — the same
+  division SCRISPR's operators already joined under. Discipline note
+  for the port: Finch operators arrive UNMEASURED on these substrates;
+  each gets a ledger row and earns its defaults the usual way. Naming
+  and repo identity (latentspace -> Finch 4, and what happens to
+  published links) are Daniel's call.
