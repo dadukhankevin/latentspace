@@ -17,6 +17,8 @@ Honesty: report exactly the number the canonical scorer printed for the artifact
 
 Budget: at most 3 canonical scorer runs for this job, tuning included. Any offline training experiment you run must first take the scorer's own lock (see the scorer source) so trainings never overlap on this machine.
 
+If you cannot finish — the scorer keeps failing, you are out of attempts, anything — do NOT go silent: report the failure with curl -s -X POST localhost:{port}/abandon -d '{{"job_id": "{job_id}"}}' so the engine can reassign the work. The scorer may block for several minutes waiting on the machine's training lock; always run it with a generous timeout.
+
 When finished, report directly to the engine:
 
     curl -s -X POST localhost:{port}/tell -H 'Content-Type: application/json' -d '{{"job_id": "{job_id}", "variation": "<your clause>", "score": <float>, "artifact": "{out_dir}/artifact.py", "contradicts_base": <true|false>}}'
