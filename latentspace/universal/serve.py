@@ -126,6 +126,57 @@ class GAService:
 
     # ------------------------------------------------------ progress page
 
+    def fitness_svg(self, individuals):
+        """Best-ever fitness curve over evaluation order, dependency-free.
+        Scores <= -90 (disqualified / failed) are excluded from the
+        curve but counted on the x axis."""
+        pts, curve, best, n = [], [], None, 0
+        for ind in sorted(individuals, key=lambda i: i["id"]):
+            n += 1
+            if ind["score"] <= -90:
+                continue
+            pts.append((n, ind["score"], ind["id"]))
+            best = ind["score"] if best is None else max(best,
+                                                         ind["score"])
+            curve.append((n, best))
+        if len(pts) < 2:
+            return ""
+        ys = [p[1] for p in pts]
+        lo, hi = min(ys), max(ys)
+        pad = max((hi - lo) * 0.15, 1e-9)
+        lo, hi = lo - pad, hi + pad
+        W, H, ML, MB = 720, 240, 60, 26
+        xmax = n + 1
+
+        def X(x):
+            return ML + (W - ML - 12) * x / xmax
+
+        def Y(y):
+            return 10 + (H - 10 - MB) * (hi - y) / (hi - lo)
+
+        s = [f'<svg width="{W}" height="{H}" style="background:#161616;'
+             'border:1px solid #333">']
+        s.append(f'<text x="{ML}" y="{H-8}" font-size="10" fill="#888">'
+                 'x &#8212; evaluation order &#183; y &#8212; score '
+                 '(higher is better) &#183; line = best ever</text>')
+        path = ""
+        for i, (x, y) in enumerate(curve):
+            path += (f"M {X(x):.1f} {Y(y):.1f} " if i == 0
+                     else f"L {X(x):.1f} {Y(curve[i-1][1]):.1f} "
+                          f"L {X(x):.1f} {Y(y):.1f} ")
+        s.append(f'<path d="{path}" fill="none" stroke="#7ac" '
+                 'stroke-width="2"/>')
+        for x, y, lab in pts:
+            s.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="4" '
+                     'fill="#888"/>')
+            s.append(f'<text x="{X(x)+6:.1f}" y="{Y(y)-6:.1f}" '
+                     f'font-size="9" fill="#9a9">{lab} {y:.4g}</text>')
+        for gy in (lo + pad, hi - pad):
+            s.append(f'<text x="{ML-6}" y="{Y(gy)+3:.1f}" font-size="9" '
+                     f'fill="#888" text-anchor="end">{gy:.4g}</text>')
+        s.append("</svg>")
+        return "".join(s)
+
     def progress_html(self):
         with self.lock:
             ga = self.ga
@@ -134,6 +185,7 @@ class GAService:
                              if i["alive"]),
                             key=lambda i: (i["task"], -i["score"]))
             best = {t: b for t, b in ga.best.items() if b is not None}
+            curve = self.fitness_svg(list(ga.individuals.values()))
         rows = "".join(
             f"<tr><td>{i['id']}</td><td>{i['task']}</td>"
             f"<td>{i['score']:.5f}</td><td>{i['origin']}</td>"
@@ -164,6 +216,8 @@ population {s['population']}, {s['stale']} stale,
 <h2>best ever per task</h2>
 <table><tr><th>task</th><th>score</th><th>id</th><th>variation</th></tr>
 {bests}</table>
+<h2>fitness curve</h2>
+{curve}
 <h2>living population</h2>
 <table><tr><th>id</th><th>task</th><th>score</th><th>origin</th>
 <th>stale</th><th>contra</th><th>variation</th></tr>{rows}</table>
