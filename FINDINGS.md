@@ -4302,3 +4302,27 @@ scripted fake agent CLI (tests/test_drive.py, tests/test_serve.py);
 every operator choice here is design inheritance, not measurement —
 the ledger row is unchanged until the comparison run (one agent
 iterating alone, matched agent-call budget) is actually run.
+
+**Round thirty-eight, second addendum — the hard problem stands up
+(2026-07-30 pilot).** The lm task (train-script optimization, the
+autoresearch shape scaled to this machine: 60s wall-clock MPS budget,
+fitness = negative validation bits per byte on a committed 1.67MB
+repo-text corpus): baseline byte transformer calibrates at 1.4975 bpb
+(repeat 1.5008 — run noise 0.003; audit tolerance 0.05 is now part of
+the scorer's own output contract and the driver honors per-task
+tolerances). A single real founder agent, given the assigned
+"exploit the generator's distribution" angle, scored **1.1941 bpb —
+20% under the baseline in one job** — via alphabet restriction (119 of
+256 bytes occur), a unigram-initialized head, and exact-match
+retrieval blended with the neural model, including a causal online
+index over the eval prefix (code-read verified: queries grams ending
+at row i, inserts only past transitions — legitimate adaptive
+modeling, no leakage). The audit machinery earned its keep AGAIN: the
+holdout retrain FAILED on budget (106s vs 60s — consecutive-run MPS
+tail latency), so the 20% champion is also budget-fragile, which its
+train-split score alone would never have shown. The task has exactly
+the profile the comparison needs: large headroom, many independent
+tricks, and a risk dimension (budget engineering) that punishes
+carelessness. GA-vs-solo remains unrun (spawning headless `claude -p`
+subprocesses is permission-gated in this harness); both sides are
+built, matched at 16 agent calls and <=3 scorer runs per call.

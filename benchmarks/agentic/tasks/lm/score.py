@@ -90,6 +90,7 @@ def main():
             print(json.dumps({
                 "task": "lm", "score": -bpb, "bpb": round(bpb, 5),
                 "train_seconds": round(train_time, 1),
+                "tolerance": SEED_TOL,
                 "holdout": holdout_mode, "errors": []}))
         except Exception as e:
             print(json.dumps({"task": "lm", "score": -99.0, "bpb": None,

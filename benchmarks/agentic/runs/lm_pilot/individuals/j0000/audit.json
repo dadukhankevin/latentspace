@@ -1,0 +1,7 @@
+{
+ "reported": -1.1940787075230608,
+ "reproduced": -1.2065188891494822,
+ "holdout": -99.0,
+ "passed": true,
+ "notes": "canonical reproduces within lm tolerance 0.05; holdout run FAILED on budget (train() 106s vs 60s, thermal/queue tail on consecutive MPS runs) - artifact is budget-fragile; causality of the online eval index verified by code read (queries grams ending at row i, inserts only past transitions - legitimate PPM-style adaptive modeling)"
+}

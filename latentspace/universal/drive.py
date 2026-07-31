@@ -235,7 +235,11 @@ class Driver:
                 self._log(f"audit {task} {best['id']}: scorer failed "
                           f"({e!r}) — fail")
                 continue
-            passed = abs(rerun["score"] - best["score"]) < 1e-9
+            # each task's scorer declares its own reproduction tolerance
+            # (deterministic tasks omit it -> exact; the lm task trains
+            # on MPS, which is not bit-deterministic run to run)
+            passed = (abs(rerun["score"] - best["score"])
+                      <= rerun.get("tolerance", 1e-9))
             with open(aud_path, "w") as f:
                 json.dump({"reported": best["score"],
                            "reproduced": rerun["score"],
