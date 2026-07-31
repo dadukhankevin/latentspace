@@ -46,6 +46,113 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .agentic import AgenticGA
 
+PALETTE = ["#7ac", "#c96", "#9c7", "#b8a", "#8cc", "#ca8"]
+
+
+def registry_path():
+    """Global registry of every run this machine has served — one JSON
+    line per server start. The hub (hub.py) reads it to show ALL
+    evolution jobs, live and finished, on one page."""
+    return os.environ.get(
+        "LATENTSPACE_REGISTRY",
+        os.path.expanduser("~/.latentspace/registry.jsonl"))
+
+
+def register_run(run_dir, port):
+    path = registry_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a") as f:
+        f.write(json.dumps({"run_dir": os.path.abspath(run_dir),
+                            "port": port, "pid": os.getpid(),
+                            "started": time.time()}) + "\n")
+
+
+def curve_svg(series, points=None, xlabel="evaluations", w=720, h=260,
+              labels=True):
+    """Fitness-over-time chart, dependency-free. series maps a name to
+    its best-so-far [(x, y), ...] step curve — one line per task or
+    fitness function, same rendering for every kind of run. points are
+    optional (x, y, label) markers (agentic individuals)."""
+    series = {k: v for k, v in series.items() if len(v) >= 2}
+    if not series:
+        return "<p>curve appears after two scored points</p>"
+    allx = [x for c in series.values() for x, _ in c]
+    ally = [y for c in series.values() for _, y in c]
+    if points:
+        ally += [p[1] for p in points]
+    lo, hi = min(ally), max(ally)
+    pad = max((hi - lo) * 0.15, 1e-9)
+    lo, hi = lo - pad, hi + pad
+    ML, MB = (62, 28) if labels else (8, 8)
+    xmax = max(allx) * 1.05 + 1e-9
+
+    def X(x):
+        return ML + (w - ML - 14) * x / xmax
+
+    def Y(y):
+        return 12 + (h - 12 - MB) * (hi - y) / (hi - lo)
+
+    s = [f'<svg width="{w}" height="{h}" style="background:#161616;'
+         'border:1px solid #333">']
+    if labels:
+        s.append(f'<text x="{ML}" y="{h-8}" font-size="10" fill="#888">'
+                 f'x &#8212; {xlabel} &#183; y &#8212; best score so far '
+                 '(higher is better)</text>')
+    for i, (name, curve) in enumerate(sorted(series.items())):
+        color = PALETTE[i % len(PALETTE)]
+        path = ""
+        for j, (x, y) in enumerate(curve):
+            path += (f"M {X(x):.1f} {Y(y):.1f} " if j == 0
+                     else f"L {X(x):.1f} {Y(curve[j-1][1]):.1f} "
+                          f"L {X(x):.1f} {Y(y):.1f} ")
+        s.append(f'<path d="{path}" fill="none" stroke="{color}" '
+                 'stroke-width="2"/>')
+        if labels:
+            lx, ly = curve[-1]
+            s.append(f'<text x="{X(lx)-4:.1f}" y="{Y(ly)-6:.1f}" '
+                     f'font-size="10" fill="{color}" text-anchor="end">'
+                     f'{html.escape(str(name))} {ly:.5g}</text>')
+    if labels:
+        for x, y, lab in (points or []):
+            s.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="3.5" '
+                     'fill="#666"/>')
+            s.append(f'<text x="{X(x)+5:.1f}" y="{Y(y)+11:.1f}" '
+                     f'font-size="8.5" fill="#777">{lab}</text>')
+        for gy in (lo + pad, hi - pad):
+            s.append(f'<text x="{ML-6}" y="{Y(gy)+3:.1f}" font-size="9" '
+                     f'fill="#888" text-anchor="end">{gy:.5g}</text>')
+    s.append("</svg>")
+    return "".join(s)
+
+
+def agentic_curves(individuals):
+    """Per-task best-ever step curves over tell order; disqualified
+    scores (<= -90) count on the x axis but not in the curves."""
+    series, points, best, n = {}, [], {}, 0
+    for ind in sorted(individuals, key=lambda i: i["id"]):
+        n += 1
+        if ind["score"] <= -90:
+            continue
+        t = ind["task"]
+        points.append((n, ind["score"], ind["id"]))
+        if t not in best or ind["score"] > best[t]:
+            best[t] = ind["score"]
+        series.setdefault(t, []).append((n, best[t]))
+    return series, points
+
+
+def telemetry_curves(telemetry):
+    series = {}
+    for point in telemetry:
+        x = point.get("evaluations") or point.get("epoch") or 0
+        for name, score in (point.get("best") or {}).items():
+            if score is None:
+                continue
+            cur = series.setdefault(name, [])
+            y = max(score, cur[-1][1]) if cur else score
+            cur.append((x, y))
+    return series
+
 
 class GAService:
     """The engine plus the lock and the save-after-every-mutation rule.
@@ -151,88 +258,14 @@ class GAService:
 
     # ------------------------------------------------------ progress page
 
-    PALETTE = ["#7ac", "#c96", "#9c7", "#b8a", "#8cc", "#ca8"]
-
     def curve_svg(self, series, points=None, xlabel="evaluations"):
-        """Fitness-over-time chart, dependency-free. series maps a name
-        to its best-so-far [(x, y), ...] step curve — one line per task
-        or fitness function, same page for agentic and tensor runs.
-        points are optional (x, y, label) markers (agentic
-        individuals)."""
-        series = {k: v for k, v in series.items() if len(v) >= 2}
-        if not series:
-            return "<p>curve appears after two scored points</p>"
-        allx = [x for c in series.values() for x, _ in c]
-        ally = [y for c in series.values() for _, y in c]
-        if points:
-            ally += [p[1] for p in points]
-        lo, hi = min(ally), max(ally)
-        pad = max((hi - lo) * 0.15, 1e-9)
-        lo, hi = lo - pad, hi + pad
-        W, H, ML, MB = 720, 260, 62, 28
-        xmax = max(allx) * 1.05 + 1e-9
-
-        def X(x):
-            return ML + (W - ML - 14) * x / xmax
-
-        def Y(y):
-            return 12 + (H - 12 - MB) * (hi - y) / (hi - lo)
-
-        s = [f'<svg width="{W}" height="{H}" style="background:#161616;'
-             'border:1px solid #333">',
-             f'<text x="{ML}" y="{H-8}" font-size="10" fill="#888">'
-             f'x &#8212; {xlabel} &#183; y &#8212; best score so far '
-             '(higher is better)</text>']
-        for i, (name, curve) in enumerate(sorted(series.items())):
-            color = self.PALETTE[i % len(self.PALETTE)]
-            path = ""
-            for j, (x, y) in enumerate(curve):
-                path += (f"M {X(x):.1f} {Y(y):.1f} " if j == 0
-                         else f"L {X(x):.1f} {Y(curve[j-1][1]):.1f} "
-                              f"L {X(x):.1f} {Y(y):.1f} ")
-            s.append(f'<path d="{path}" fill="none" stroke="{color}" '
-                     'stroke-width="2"/>')
-            lx, ly = curve[-1]
-            s.append(f'<text x="{X(lx)-4:.1f}" y="{Y(ly)-6:.1f}" '
-                     f'font-size="10" fill="{color}" text-anchor="end">'
-                     f'{html.escape(str(name))} {ly:.5g}</text>')
-        for x, y, lab in (points or []):
-            s.append(f'<circle cx="{X(x):.1f}" cy="{Y(y):.1f}" r="3.5" '
-                     'fill="#666"/>')
-            s.append(f'<text x="{X(x)+5:.1f}" y="{Y(y)+11:.1f}" '
-                     f'font-size="8.5" fill="#777">{lab}</text>')
-        for gy in (lo + pad, hi - pad):
-            s.append(f'<text x="{ML-6}" y="{Y(gy)+3:.1f}" font-size="9" '
-                     f'fill="#888" text-anchor="end">{gy:.5g}</text>')
-        s.append("</svg>")
-        return "".join(s)
+        return curve_svg(series, points, xlabel)
 
     def _agentic_curves(self, individuals):
-        """Per-task best-ever step curves over tell order; disqualified
-        scores (<= -90) count on the x axis but not in the curves."""
-        series, points, best, n = {}, [], {}, 0
-        for ind in sorted(individuals, key=lambda i: i["id"]):
-            n += 1
-            if ind["score"] <= -90:
-                continue
-            t = ind["task"]
-            points.append((n, ind["score"], ind["id"]))
-            if t not in best or ind["score"] > best[t]:
-                best[t] = ind["score"]
-            series.setdefault(t, []).append((n, best[t]))
-        return series, points
+        return agentic_curves(individuals)
 
     def _telemetry_curves(self):
-        series = {}
-        for point in self.telemetry:
-            x = point.get("evaluations") or point.get("epoch") or 0
-            for name, score in (point.get("best") or {}).items():
-                if score is None:
-                    continue
-                cur = series.setdefault(name, [])
-                y = max(score, cur[-1][1]) if cur else score
-                cur.append((x, y))
-        return series
+        return telemetry_curves(self.telemetry)
 
     def progress_html(self):
         with self.lock:
@@ -377,6 +410,7 @@ def serve(run_dir, port=0, tasks=None, telemetry_only=False, **ga_kwargs):
     server.service = service
     with open(os.path.join(run_dir, "server.json"), "w") as f:
         json.dump({"port": server.server_address[1], "pid": os.getpid()}, f)
+    register_run(run_dir, server.server_address[1])
     return server
 
 

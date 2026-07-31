@@ -126,3 +126,42 @@ def test_agentic_page_uses_multiseries_curve(server):
             f"http://127.0.0.1:{call.port}/progress") as r:
         page = r.read().decode()
     assert "alpha" in page and "beta" in page   # one labeled line per task
+
+
+def test_hub_shows_every_registered_run(tmp_path, monkeypatch):
+    import urllib.request
+    from latentspace.universal import hub
+    from latentspace.universal.agentic import AgenticGA
+    from latentspace.universal.serve import register_run
+
+    monkeypatch.setenv("LATENTSPACE_REGISTRY",
+                       str(tmp_path / "registry.jsonl"))
+    # a finished agentic run, straight from disk
+    ag_dir = tmp_path / "compress_demo"
+    ag_dir.mkdir()
+    ga = AgenticGA(tasks=["compress"], founders=2, seed=0)
+    for job in ga.ask():
+        ga.tell(job["job_id"], "v", 1.0)
+    ga.save(str(ag_dir / "state.json"))
+    register_run(str(ag_dir), port=1)          # dead port -> finished
+    # a finished solver run, telemetry only
+    so_dir = tmp_path / "apple_solver"
+    so_dir.mkdir()
+    with open(so_dir / "telemetry.jsonl", "w") as f:
+        for e in range(3):
+            f.write(json.dumps({"epoch": e, "evaluations": e * 10,
+                                "best": {"fn0": -1.0 + e * 0.1}}) + "\n")
+    register_run(str(so_dir), port=1)
+    page = hub.hub_html()
+    assert "compress_demo" in page and "apple_solver" in page
+    assert "finished" in page
+    assert page.count('class="card"') == 2
+
+
+def test_serve_registers_in_global_registry(tmp_path, monkeypatch):
+    monkeypatch.setenv("LATENTSPACE_REGISTRY",
+                       str(tmp_path / "reg.jsonl"))
+    srv = serve(str(tmp_path / "r"), port=0, telemetry_only=True)
+    entries = [json.loads(l) for l in open(tmp_path / "reg.jsonl")]
+    assert entries[0]["port"] == srv.server_address[1]
+    srv.server_close()

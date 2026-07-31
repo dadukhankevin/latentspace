@@ -134,6 +134,38 @@ constant output is a degenerate solution and evolution has nothing to
 select on. Register an architecture with its final layer scaled up (~10x)
 for such problems; `benchmarks/probe_walker.py` is the worked example.
 
+## Finch 4: evolution as composable layers (phase "super evolution")
+
+This library and [Finch](https://github.com/dadukhankevin/Finch) are
+becoming one thing: Finch supplies the grammar (an Environment is a
+stack of Layers over typed individuals), latentspace supplies the
+vetted sentences. `latentspace.finch` ships Finch's exact surface —
+
+```python
+from latentspace.finch import Environment, tensor_environment, \
+    agentic_environment
+
+env = agentic_environment(tasks=["compress"], runner=my_agent_runner,
+                          live=True)
+env.compile()
+env.evolve(generations=10)
+env.best_ever
+env.plot()
+```
+
+— with the tensor solver and the agentic substrate as canonical
+presets whose evidence carries because the code is identical:
+`tests/test_finch.py` holds seeded bit-identity tests (the layered
+agentic run reproduces the direct engine loop individual-for-
+individual; the tensor preset reproduces `solve()` exactly). That is
+the acceptance rule for every port. Selection, shares, and capping
+stay engine-enforced laws in phase one — layers drive the engine
+rather than reimplement it — and recompositions beyond the presets are
+new mechanisms that earn their own FINDINGS rows. Two skill tiers make
+agents native: `agentic-ga` (operate inside a run) and
+`evolution-author` (set up whole new evolutionary problems on
+anything the library expresses).
+
 ## One dashboard for every run
 
 Every evolutionary problem this library runs — tensor or agentic —
@@ -152,6 +184,14 @@ or fitness function, best-so-far step curves), and for agentic runs the
 living population, per-task champions, staleness, contradiction flags,
 and the event feed. Telemetry also lands in the run directory as
 `telemetry.jsonl`, so a crashed dashboard loses nothing.
+
+And when many things evolve at once, `python3 -m
+latentspace.universal.hub` (port 8800) is the page above the pages:
+every run this machine has served — every problem, algorithm, agent
+configuration, live or finished — as one self-refreshing board of
+cards with status, best scores, mini fitness curves, and links into
+each live run's full dashboard. Servers register themselves; nothing
+to configure.
 
 ## The agentic substrate (ask/tell)
 

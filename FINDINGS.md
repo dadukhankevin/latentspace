@@ -4418,3 +4418,50 @@ Filed for later (Daniel's next directions, discussed not built):
   each gets a ledger row and earns its defaults the usual way. Naming
   and repo identity (latentspace -> Finch 4, and what happens to
   published links) are Daniel's call.
+
+## Round forty-one — phase SUPER EVOLUTION: Finch 4 phase one, the hub, and the author tier (2026-07-30)
+
+Daniel's design, verbatim in spirit: everything built here becomes
+layers that operate EXACTLY as they were inside the next iteration of
+Finch; no re-testing needed because the mechanisms are already vetted;
+and the upgrade over Finch 3 is agents as natives — running inside the
+loop AND setting up their own evolutionary problems, mixing and
+matching on one system, with one dashboard over all of it.
+
+Shipped:
+
+- **latentspace.finch** — Finch's exact surface (Environment(layers)
+  .compile().evolve(generations), best_ever, plot()) with the two
+  canonical presets: agentic_environment (the AgenticGA engine driven
+  by AskRun/Audit/Consolidate layers) and tensor_environment (solve()
+  wrapped whole). The Finch 3 -> 4 layer correspondence is documented
+  in the package docstring.
+- **The acceptance rule, executable**: evidence carries only through
+  identity, and identity is TESTED — tests/test_finch.py proves the
+  layered agentic run reproduces the direct engine loop individual-
+  for-individual with matching RNG state, and the tensor preset
+  reproduces solve() exactly (same best, same evaluation count, same
+  history). This is the fold-removal standard applied to the port:
+  vetted mechanisms enter Finch 4 with their records; recompositions
+  beyond the presets are new mechanisms and get new rows. Selection/
+  shares/capping stay engine-owned laws in phase one (the one-decoder
+  drift history is why); opening the tensor epoch into free stages is
+  the known remaining step, gated on bit-identity.
+- **The hub** (latentspace/universal/hub.py): every reporting server
+  registers itself in a global registry; one page (port 8800) shows
+  every run this machine has served — live or finished, agentic or
+  tensor — with status, best scores per task/function, mini fitness
+  curves read from persisted state, and links into live dashboards.
+  However much evolution is happening at once, one board watches it.
+- **The author tier** (.claude/skills/evolution-author): the second
+  skill — agents setting up NEW evolutionary problems end to end:
+  representation choice, canonical-scorer constitution (practice/
+  surprise split, score-what-cannot-be-faked, declared tolerance,
+  budget enforced in the scorer), launch patterns, and the discipline
+  that turns runs into findings (comparison opponent, audit-on-
+  influence, ledger rows, rates over single runs). With agentic-ga
+  (inside the loop) this completes the two tiers.
+
+131 -> 136 tests, all green. Naming/rebranding of the repo itself
+(latentspace -> Finch 4) remains Daniel's call and is deliberately not
+done in code; nothing here blocks it.
