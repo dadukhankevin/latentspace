@@ -32,18 +32,21 @@ from .serve import agentic_curves, curve_svg, registry_path, \
 
 def load_registry():
     """Latest entry per run directory, newest first."""
-    path = registry_path()
-    if not os.path.exists(path):
-        return []
+    paths = [registry_path()]
+    if not (os.environ.get("FINCH4_REGISTRY")
+            or os.environ.get("LATENTSPACE_REGISTRY")):
+        # default location only: also read the pre-rename registry
+        paths.append(os.path.expanduser("~/.latentspace/registry.jsonl"))
     latest = {}
-    with open(path) as f:
-        for line in f:
-            try:
-                entry = json.loads(line)
-                if os.path.isdir(entry["run_dir"]):   # vanished tmp dirs
-                    latest[entry["run_dir"]] = entry
-            except (json.JSONDecodeError, KeyError):
-                continue
+    for path in dict.fromkeys(p for p in paths if os.path.exists(p)):
+        with open(path) as f:
+            for line in f:
+                try:
+                    entry = json.loads(line)
+                    if os.path.isdir(entry["run_dir"]):  # vanished tmp dirs
+                        latest[entry["run_dir"]] = entry
+                except (json.JSONDecodeError, KeyError):
+                    continue
     return sorted(latest.values(), key=lambda e: -e.get("started", 0))
 
 
@@ -114,8 +117,7 @@ def hub_data():
 
 
 HUB_BODY = """
-<div class="hdr"><h1>SUPER EVOLUTION</h1>
-<span class="sub">every run on this machine — live and finished</span>
+<div class="hdr"><h1>Finch 4 Dashboard</h1>
 <span class="pill" id="count"></span></div>
 <div class="grid" id="grid"></div>
 """
@@ -144,8 +146,9 @@ async function tick(){
       best+'</div><div id="mc'+idx+'"></div></div>';
   }).join('')||'<p class="dim">no runs registered yet</p>';
   d.cards.forEach((c,idx)=>{
-    drawChart(document.getElementById('mc'+idx), c.series||{}, null,
-      {mini:true, w:330, h:96});
+    const el=document.getElementById('mc'+idx);
+    drawChart(el, c.series||{}, null,
+      {mini:true, w:Math.max((el.clientWidth||330)-2,120), h:96});
   });
 }
 tick(); setInterval(tick, 3000);
@@ -154,7 +157,7 @@ tick(); setInterval(tick, 3000);
 
 def hub_html():
     from .ui import page
-    return page("super evolution", HUB_BODY, HUB_JS)
+    return page("Finch 4 Dashboard", HUB_BODY, HUB_JS)
 
 
 def main():

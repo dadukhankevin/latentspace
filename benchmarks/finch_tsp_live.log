@@ -1,0 +1,123 @@
+[finch] finch-tsp: http://127.0.0.1:57549/progress
+[serve] GET /summary HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /progress HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /favicon.ico HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 6000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 480120
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 12000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 960120
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /progress HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /favicon.ico HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 18000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 1440120
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 24000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 1920120
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 30000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 2400120
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 36000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 2880120
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 42000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 3360120
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 48000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 3840120
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /progress HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 54000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 4320120
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+[serve] GET /summary HTTP/1.1
+[serve] GET /page.json HTTP/1.1
+gen 60000  best tour 11.5501  vs NN 13.0129  ratio 1.1266  evals 4800120
+
+final: GA 11.5501 | nearest-neighbor 13.0129 | random ~105.1182
+ratio vs NN: 1.1266 (beats nearest-neighbor)
+curve: benchmarks/finch_tsp_demo_fitness.svg

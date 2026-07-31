@@ -17,7 +17,7 @@ bench = ["scipy>=1.10"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["latentspace*"]
+include = ["latentspace*", "finch4*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

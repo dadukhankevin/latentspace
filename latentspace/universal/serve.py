@@ -53,9 +53,9 @@ def registry_path():
     """Global registry of every run this machine has served — one JSON
     line per server start. The hub (hub.py) reads it to show ALL
     evolution jobs, live and finished, on one page."""
-    return os.environ.get(
-        "LATENTSPACE_REGISTRY",
-        os.path.expanduser("~/.latentspace/registry.jsonl"))
+    return (os.environ.get("FINCH4_REGISTRY")
+            or os.environ.get("LATENTSPACE_REGISTRY")
+            or os.path.expanduser("~/.finch4/registry.jsonl"))
 
 
 def register_run(run_dir, port):
@@ -317,7 +317,7 @@ class GAService:
 
     def progress_html(self):
         from .ui import page
-        return page("latentspace run", PROGRESS_BODY, PROGRESS_JS)
+        return page("Finch 4 run", PROGRESS_BODY, PROGRESS_JS)
 
 
 PROGRESS_BODY = """
@@ -475,7 +475,7 @@ def live_progress(run_dir=None, port=0, names=None):
     server = serve(run_dir, port=port, telemetry_only=True)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{server.server_address[1]}/progress"
-    print(f"[latentspace] live progress: {url}", flush=True)
+    print(f"[finch4] live progress: {url}", flush=True)
 
     def progress(epoch, epochs, evaluations, best_pheno, best_score):
         best = {}

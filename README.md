@@ -1,4 +1,6 @@
-# latentspace
+# Finch 4 (grown from latentspace)
+
+> `latentspace` was this library's working title during the research campaign; it is becoming **Finch 4**, the unification with the [Finch](https://github.com/dadukhankevin/Finch) lineage. New code should `import finch4`; the `latentspace.*` modules remain the implementation while the rename completes.
 
 *One genetic algorithm for any problem.*
 
