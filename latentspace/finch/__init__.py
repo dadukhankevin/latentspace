@@ -75,10 +75,12 @@ class Environment:
     reporting server (the same /progress page and hub registration
     every run gets)."""
 
-    def __init__(self, layers, name="finch", live=False):
+    def __init__(self, layers, name="finch", live=False, seed=None):
+        import random
         self.layers = list(layers)
         self.name = name
-        self.state = {"generation": 0, "evaluations": 0, "history": []}
+        self.state = {"generation": 0, "evaluations": 0, "history": [],
+                      "rng": random.Random(seed)}
         self._live = live
         self._server = None
         self._compiled = False

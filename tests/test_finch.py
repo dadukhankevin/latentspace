@@ -101,3 +101,43 @@ def test_environment_history_and_plot(tmp_path):
     assert env.state["history"][-1]["best"]["alpha"] > 0
     path = env.plot(str(tmp_path / "curve.svg"))
     assert "svg" in open(path).read()
+
+
+def test_classic_layers_tsp_improves_and_is_deterministic():
+    import math
+    import random as pyrandom
+    from latentspace.finch.classic import (Breed, CapPopulation,
+                                           Evaluate, Mutate, Populate,
+                                           SortByFitness, inversion,
+                                           order_crossover)
+
+    rng = pyrandom.Random(1)
+    coords = [(rng.random(), rng.random()) for _ in range(25)]
+
+    def tour_len(order):
+        return sum(math.dist(coords[order[i]],
+                             coords[order[(i + 1) % len(order)]])
+                   for i in range(len(order)))
+
+    def factory(r):
+        order = list(range(25))
+        r.shuffle(order)
+        return order
+
+    def build():
+        return Environment([
+            Populate(factory, 40),
+            Breed(order_crossover, children=30),
+            Mutate(inversion, rate=0.6),
+            Evaluate(lambda g: -tour_len(g), name="tsp"),
+            SortByFitness(),
+            CapPopulation(40),
+        ], seed=7)
+
+    a = build().evolve(generations=40)
+    b = build().evolve(generations=40)
+    first = a.state["history"][0]["best"]["tsp"]
+    last = a.best_ever["fitness"]
+    assert last > first + 1.0            # genuinely improved
+    assert a.best_ever["genome"] == b.best_ever["genome"]   # seeded
+    assert sorted(a.best_ever["genome"]) == list(range(25))  # valid tour
